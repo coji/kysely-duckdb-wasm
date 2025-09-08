@@ -19,22 +19,24 @@ npm install --save kysely @duckdb/duckdb-wasm @coji/kysely-duckdb-wasm
 import * as duckdb from '@duckdb/duckdb-wasm'
 import duckdbWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?worker'
 import duckdbWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url'
-import { Kysely } from "kysely";
-import { DuckDbDialect } from "@coji/kysely-duckdb-wasm";
+import { Kysely } from 'kysely'
+import { DuckDbDialect } from '@coji/kysely-duckdb-wasm'
 
 const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.ERROR)
 const worker = new duckdbWorker()
-db = new duckdb.AsyncDuckDB(logger, worker)
+const db = new duckdb.AsyncDuckDB(logger, worker)
 await db.instantiate(duckdbWasm)
+
 const duckdbDialect = new DuckDbDialect({
-  database: wasmdb,
+  database: db,
   tableMappings: {},
 })
-const kysely = new Kysely<DatabaseSchema>({ dialect: duckdbDialect });
-const res = await kysely.selectFrom("person").selectAll().execute();
+
+const kysely = new Kysely<DatabaseSchema>({ dialect: duckdbDialect })
+const res = await kysely.selectFrom('person').selectAll().execute()
 ```
 
-### Configrations
+### Configurations
 
 The configuration object of `DuckDbDialect` can contain the following properties:
 
@@ -49,8 +51,8 @@ of these using [raw SQL](https://kysely.dev/docs/recipes/raw-sql) feature.
 This package includes some shallow helper for these types.
 
 ```ts
-import type { DuckDBNodeDataTypes } from "kysely-duckdb";
-import { datatypes } from "kysely-dockdb";
+import type { DuckDBNodeDataTypes } from '@coji/kysely-duckdb-wasm'
+import { datatypes } from '@coji/kysely-duckdb-wasm'
 
 // DuckDBNodeDataTypes: type mappings for table schema
 export interface Database {
@@ -75,23 +77,23 @@ export interface Database {
 ...
 
 // datatypes: type constructors
-const kysely = new Kysely<Database>({dialect: duckDbDialect});
+const kysely = new Kysely<Database>({ dialect: duckDbDialect })
 await kysely
   .insertInto("t1")
   .values([{
     int_list: datatypes.list([3, 4, 5]),
     string_list: datatypes.list(["d", "e", "f"]),
-    map1: types.map([[1, 2], [3, 4]]),
+    map1: datatypes.map([[1, 2], [3, 4]]),
     struct1: datatypes.struct({
       x: sql`${1}`,
       y: sql`${"aaa"}`,
     }),
-    bitstring1: datatypes.bit("010101"),
-    blob1: datatypes.blob(Buffer.from([0xBB, 0xCC])),
+    bitstring1: datatypes.bit('010101'),
+    blob1: datatypes.blob(new Uint8Array([0xBB, 0xCC])),
     bool1: true,
     date1: datatypes.date(new Date()),
     timestamp1: datatypes.timestamp(new Date()),
-    timestamptz1: datatypes.timestamptz(new Date().toISOString().slice(0, -1) + "+03:00"),
+    timestamptz1: datatypes.timestamptz(new Date().toISOString().slice(0, -1) + '+03:00'),
     interval1: sql`INTERVAL 1 YEAR`,
   }])
   .execute();

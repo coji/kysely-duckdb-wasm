@@ -27,15 +27,15 @@ export type DuckDbDialectConfig = Simplify<
  *
  * ### Install
  * ```bash
- * $ npm install --save kysely duckdb kysely-duckdb
+ * $ npm install --save kysely @duckdb/duckdb-wasm @coji/kysely-duckdb-wasm
  * ```
  *
  * ### Basic Usage Example
- * reding data from json file.
+ * reading data from json file.
  * ```ts
- * import * as duckdb from "duckdb";
+ * import * as duckdb from "@duckdb/duckdb-wasm";
  * import { Kysely } from "kysely";
- * import { DuckDbDialect } from "kysely-duckdb"
+ * import { DuckDbDialect } from "@coji/kysely-duckdb-wasm";
  *
  * interface PersonTable {
  *   first_name: string,
@@ -46,7 +46,10 @@ export type DuckDbDialectConfig = Simplify<
  *   person: PersonTable,
  * };
  *
- * const db = new duckdb.Database(":memory:");
+ * const worker = new Worker('@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js');
+ * const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.ERROR);
+ * const db = new duckdb.AsyncDuckDB(logger, worker);
+ * await db.instantiate('@duckdb/duckdb-wasm/dist/duckdb-eh.wasm');
  * const duckdbDialect = new DuckDbDialect({
  *   database: db,
  *   tableMappings: {
@@ -61,7 +64,7 @@ export type DuckDbDialectConfig = Simplify<
  */
 export class DuckDbDialect implements Dialect {
   /**
-   * @param config configulations for DuckDbDialect
+   * @param config configurations for DuckDbDialect
    */
   constructor(private readonly config: DuckDbDialectConfig) {}
   createQueryCompiler(): QueryCompiler {
