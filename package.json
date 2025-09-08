@@ -25,7 +25,9 @@
   "license": "MIT",
   "devDependencies": {
     "@types/node": "^24.0.4",
+    "@vitest/browser": "3.2.4",
     "dprint": "^0.50.0",
+    "playwright": "1.55.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typedoc": "^0.28.5",
