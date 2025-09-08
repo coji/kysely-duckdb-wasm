@@ -1,4 +1,3 @@
-
 # Kysely Dialect for DuckDB Wasm
 
 [![test](https://github.com/runoshun/kysely-duckdb/actions/workflows/test.yml/badge.svg)](https://github.com/runoshun/kysely-duckdb/actions/workflows/test.yml)

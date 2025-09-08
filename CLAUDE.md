@@ -48,6 +48,7 @@ The dialect supports mapping external data sources (JSON, CSV files) as tables t
 ### DuckDB-Specific Data Types
 
 Helper functions for DuckDB's advanced types are in `src/helper/datatypes.ts`:
+
 - Arrays: `duckArray()`, `duckArrayAggregate()`
 - Structs: `duckStruct()`, `duckRowStruct()`
 - Maps: `duckMap()`, `duckMapFromEntries()`
@@ -56,6 +57,7 @@ Helper functions for DuckDB's advanced types are in `src/helper/datatypes.ts`:
 ### Testing Pattern
 
 Tests use Vitest and follow a pattern of:
+
 1. Creating a DuckDB instance with test data
 2. Setting up Kysely with the dialect
 3. Running queries and asserting results
@@ -79,6 +81,7 @@ See `tests/test_common.ts` for shared test utilities.
 ### Working with WebAssembly Driver
 
 The driver implementation in `src/driver-wasm.ts` handles:
+
 - Connection lifecycle
 - Query execution
 - Result transformation from Arrow format
