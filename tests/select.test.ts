@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import * as types from "../src/helper/datatypes";
 import { setupDb } from "./test_common";
 
-test.skip("select from json file", async () => {
+test("select from json file", async () => {
   const kysely = await setupDb();
   const results = await kysely
     .selectFrom("person")

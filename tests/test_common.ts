@@ -1,4 +1,5 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
+import personData from "./person.json";
 import type { DuckDBWasmDataTypes } from "../src/helper/datatypes";
 import { datatypes } from "../src/index";
 import { DuckDbDialect } from "../src/index";
@@ -56,10 +57,13 @@ export const setupDb = async () => {
   const db = new duckdb.AsyncDuckDB(logger, worker);
   await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
 
+  // Register test JSON file into DuckDB's virtual FS for browser environment
+  await db.registerFileText("person.json", JSON.stringify(personData));
+
   const duckdbDialect = new DuckDbDialect({
     database: db,
     tableMappings: {
-      person: `read_json('./tests/person.json', columns={"first_name": "STRING", "gender": "STRING", "last_name": "STRING"})`
+      person: `read_json('person.json', columns={"first_name": "STRING", "gender": "STRING", "last_name": "STRING"})`
     }
   });
   const kysely = new Kysely<Database>({ dialect: duckdbDialect });
