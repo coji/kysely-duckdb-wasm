@@ -51,26 +51,26 @@ of these using [raw SQL](https://kysely.dev/docs/recipes/raw-sql) feature.
 This package includes some shallow helper for these types.
 
 ```ts
-import type { DuckDBNodeDataTypes } from '@coji/kysely-duckdb-wasm'
+import type { DuckDBWasmDataTypes } from '@coji/kysely-duckdb-wasm'
 import { datatypes } from '@coji/kysely-duckdb-wasm'
 
-// DuckDBNodeDataTypes: type mappings for table schema
+// DuckDBWasmDataTypes: type mappings for table schema
 export interface Database {
   t1: {
     int_list: number[];
     string_list: string[];
-    map1: DuckDBNodeDataTypes["MAP"]; // `map` is alias of string now. The returned value from duckdb is like '{a=1,b=2}'
+    map1: DuckDBWasmDataTypes["MAP"]; // `map` is alias of string now. The returned value from duckdb is like '{a=1,b=2}'
     struct1: {
       x: number;
       y: string;
     };
-    bitstring1: DuckDBNodeDataTypes["BIT"];
-    blob1: DuckDBNodeDataTypes["BLOB"];
-    bool1: DuckDBNodeDataTypes["BOOLEAN"];
-    date1: DuckDBNodeDataTypes["DATE"];
-    timestamp1: DuckDBNodeDataTypes["TIMESTAMP"];
-    timestamptz1: DuckDBNodeDataTypes["TIMESTAMPTZ"];
-    interval1: DuckDBNodeDataTypes["INTERVAL"];
+    bitstring1: DuckDBWasmDataTypes["BIT"];
+    blob1: DuckDBWasmDataTypes["BLOB"];
+    bool1: DuckDBWasmDataTypes["BOOLEAN"];
+    date1: DuckDBWasmDataTypes["DATE"];
+    timestamp1: DuckDBWasmDataTypes["TIMESTAMP"];
+    timestamptz1: DuckDBWasmDataTypes["TIMESTAMPTZ"];
+    interval1: DuckDBWasmDataTypes["INTERVAL"];
   };
 }
 

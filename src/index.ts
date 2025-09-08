@@ -82,5 +82,5 @@ export class DuckDbDialect implements Dialect {
 }
 
 export * as datatypes from "./helper/datatypes";
-export type { DuckDBNodeDataTypes } from "./helper/datatypes";
+export type { DuckDBWasmDataTypes } from "./helper/datatypes";
 export { DuckDbWasmDriver, type DuckDbWasmDriverConfig } from "./driver-wasm";

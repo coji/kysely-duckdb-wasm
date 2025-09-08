@@ -1,5 +1,5 @@
 import * as duckdb from "@duckdb/duckdb-wasm";
-import type { DuckDBNodeDataTypes } from "../src/helper/datatypes";
+import type { DuckDBWasmDataTypes } from "../src/helper/datatypes";
 import { datatypes } from "../src/index";
 import { DuckDbDialect } from "../src/index";
 
@@ -17,14 +17,14 @@ export interface Database {
       x: number;
       y: string;
     };
-    bs: DuckDBNodeDataTypes["BIT"];
-    bl: DuckDBNodeDataTypes["BLOB"];
-    bool: DuckDBNodeDataTypes["BOOLEAN"];
-    dt: DuckDBNodeDataTypes["DATE"];
-    ts: DuckDBNodeDataTypes["TIMESTAMP"];
-    tsz: DuckDBNodeDataTypes["TIMESTAMPTZ"];
+    bs: DuckDBWasmDataTypes["BIT"];
+    bl: DuckDBWasmDataTypes["BLOB"];
+    bool: DuckDBWasmDataTypes["BOOLEAN"];
+    dt: DuckDBWasmDataTypes["DATE"];
+    ts: DuckDBWasmDataTypes["TIMESTAMP"];
+    tsz: DuckDBWasmDataTypes["TIMESTAMPTZ"];
     enm: string;
-    delta: DuckDBNodeDataTypes["INTERVAL"];
+    delta: DuckDBWasmDataTypes["INTERVAL"];
   };
 }
 

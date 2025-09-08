@@ -1,6 +1,6 @@
 import { type RawBuilder, sql } from "kysely";
 
-export type DuckDBNodeDataTypes = {
+export type DuckDBWasmDataTypes = {
   BIT: string;
   BLOB: ArrayBufferLike;
   BOOLEAN: boolean;
@@ -49,8 +49,8 @@ export const blob = (
   const u8 = Array.isArray(buf)
     ? new Uint8Array(buf)
     : buf instanceof Uint8Array
-      ? buf
-      : new Uint8Array(buf as ArrayBufferLike);
+    ? buf
+    : new Uint8Array(buf as ArrayBufferLike);
   // Build DuckDB blob literal string like "\xAA\xBB\xCC" and cast to BLOB.
   const parts: string[] = [];
   for (let i = 0; i < u8.length; i++) {
@@ -83,7 +83,7 @@ export const struct = (
     Object.entries(values).map(([key, value]) =>
       isRawBuilder(value)
         ? sql`${sql.lit(key)}: ${value}`
-        : sql`${sql.lit(key)}: ${sql.val(value)}`,
+        : sql`${sql.lit(key)}: ${sql.val(value)}`
     )
   )}}`;
 };
