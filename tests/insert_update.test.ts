@@ -92,6 +92,32 @@ test("insert returning rows", async () => {
   expect(all.find((r) => r.a === 20 && r.b === 21)).toBeTruthy();
 });
 
+test("update returning rows", async () => {
+  const kysely = await setupDb();
+
+  await kysely.insertInto("t1").values({ a: 5, b: 6 }).execute();
+
+  const updated = await kysely
+    .updateTable("t1")
+    .set({ b: 60 })
+    .where("a", "=", 5)
+    .returningAll()
+    .execute();
+
+  expect(updated).toEqual([{ a: 5, b: 60 }]);
+});
+
+test("delete returns affected row count", async () => {
+  const kysely = await setupDb();
+
+  await kysely.insertInto("t1").values({ a: 100, b: 200 }).execute();
+
+  const res = await kysely.deleteFrom("t1").where("a", "=", 100).execute();
+
+  expect(res.length).toBe(1);
+  expect(res[0]!.numDeletedRows).toBe(BigInt(1));
+});
+
 test("BLOB roundtrip multi-byte and filtering", async () => {
   const kysely = await setupDb();
 
