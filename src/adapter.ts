@@ -12,7 +12,7 @@ export class DuckDbAdapter extends DialectAdapterBase {
 
   async acquireMigrationLock(
     _db: Kysely<any>,
-    _opt: MigrationLockOptions,
+    _opt: MigrationLockOptions
   ): Promise<void> {
     // DuckDB only has one connection that's reserved by the migration system
     // for the whole time between acquireMigrationLock and releaseMigrationLock.
@@ -21,7 +21,7 @@ export class DuckDbAdapter extends DialectAdapterBase {
 
   async releaseMigrationLock(
     _db: Kysely<any>,
-    _opt: MigrationLockOptions,
+    _opt: MigrationLockOptions
   ): Promise<void> {
     // DuckDB only has one connection that's reserved by the migration system
     // for the whole time between acquireMigrationLock and releaseMigrationLock.

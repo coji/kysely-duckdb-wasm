@@ -6,14 +6,18 @@ import { setupDb } from "./test_common";
 test("inset into table", async () => {
   const kysely = await setupDb();
 
-  const res = await kysely.insertInto("t1")
-    .values([{
-      a: 1,
-      b: 2,
-    }, {
-      a: 2,
-      b: 3,
-    }])
+  const res = await kysely
+    .insertInto("t1")
+    .values([
+      {
+        a: 1,
+        b: 2
+      },
+      {
+        a: 2,
+        b: 3
+      }
+    ])
     .execute();
 
   expect(res.length).toBe(1);
@@ -26,24 +30,32 @@ test("inset into table", async () => {
 test("insert into complex types", async () => {
   const kysely = await setupDb();
 
-  const res = await kysely.insertInto("t2")
-    .values([{
-      int_list: types.list([3, 4, 5]),
-      string_list: types.list(["d", "e", "f"]),
-      m: types.map([[1, 2], [3, 4]]),
-      st: types.struct({
-        x: sql`${1}`,
-        y: sql`${"aaa"}`,
-      }),
-      bs: types.bit("010101"),
-      bl: types.blob(new Uint8Array([0xBB, 0xCC])),
-      bool: true,
-      dt: types.date(new Date()),
-      ts: types.timestamp(new Date()),
-      tsz: types.timestamptz(new Date().toISOString().slice(0, -1) + "+03:00"),
-      enm: "sad",
-      delta: sql`INTERVAL 1 YEAR`,
-    }])
+  const res = await kysely
+    .insertInto("t2")
+    .values([
+      {
+        int_list: types.list([3, 4, 5]),
+        string_list: types.list(["d", "e", "f"]),
+        m: types.map([
+          [1, 2],
+          [3, 4]
+        ]),
+        st: types.struct({
+          x: sql`${1}`,
+          y: sql`${"aaa"}`
+        }),
+        bs: types.bit("010101"),
+        bl: types.blob(new Uint8Array([0xbb, 0xcc])),
+        bool: true,
+        dt: types.date(new Date()),
+        ts: types.timestamp(new Date()),
+        tsz: types.timestamptz(
+          new Date().toISOString().slice(0, -1) + "+03:00"
+        ),
+        enm: "sad",
+        delta: sql`INTERVAL 1 YEAR`
+      }
+    ])
     .execute();
 
   expect(res.length).toBe(1);
@@ -53,9 +65,10 @@ test("insert into complex types", async () => {
 test("update table", async () => {
   const kysely = await setupDb();
 
-  const res = await kysely.updateTable("t1")
+  const res = await kysely
+    .updateTable("t1")
     .set({
-      a: 10,
+      a: 10
     })
     .where("a", "=", 1)
     .execute();
@@ -82,7 +95,7 @@ test("insert returning rows", async () => {
 test("BLOB roundtrip multi-byte and filtering", async () => {
   const kysely = await setupDb();
 
-  const bytes = new Uint8Array([0x01, 0x00, 0xAA, 0xFF]);
+  const bytes = new Uint8Array([0x01, 0x00, 0xaa, 0xff]);
   await kysely
     .insertInto("t2")
     .values({ bl: types.blob(bytes) })
@@ -90,7 +103,7 @@ test("BLOB roundtrip multi-byte and filtering", async () => {
 
   const selected = await kysely
     .selectFrom("t2")
-    .select(["bl"]) 
+    .select(["bl"])
     .where("bl", "=", types.blob(bytes))
     .execute();
 

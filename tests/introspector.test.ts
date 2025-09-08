@@ -54,7 +54,7 @@ test("introspector: getTables returns created tables with columns", async () => 
     "ts",
     "tsz",
     "enm",
-    "delta",
+    "delta"
   ].forEach((c) => expect(t2Cols.has(c)).toBe(true));
 });
 
@@ -66,4 +66,3 @@ test("introspector: getMetadata aggregates tables", async () => {
   expect(md.tables.length).toBeGreaterThanOrEqual(2);
   expect(md.tables.some((t) => t.name === "t1")).toBe(true);
 });
-

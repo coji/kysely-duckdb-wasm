@@ -1,10 +1,15 @@
-import { DEFAULT_MIGRATION_LOCK_TABLE, DEFAULT_MIGRATION_TABLE, Kysely, sql } from "kysely";
+import {
+  DEFAULT_MIGRATION_LOCK_TABLE,
+  DEFAULT_MIGRATION_TABLE,
+  Kysely,
+  sql
+} from "kysely";
 import type {
   DatabaseIntrospector,
   DatabaseMetadata,
   DatabaseMetadataOptions,
   SchemaMetadata,
-  TableMetadata,
+  TableMetadata
 } from "kysely";
 
 export class DuckDbIntrospector implements DatabaseIntrospector {
@@ -25,7 +30,7 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
   }
 
   async getTables(
-    options: DatabaseMetadataOptions = { withInternalKyselyTables: false },
+    options: DatabaseMetadataOptions = { withInternalKyselyTables: false }
   ): Promise<TableMetadata[]> {
     let query = this.#db
       .selectFrom("information_schema.columns as columns")
@@ -33,7 +38,8 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
         b
           .onRef("columns.table_catalog", "=", "tables.table_catalog")
           .onRef("columns.table_schema", "=", "tables.table_schema")
-          .onRef("columns.table_name", "=", "tables.table_name"))
+          .onRef("columns.table_name", "=", "tables.table_name")
+      )
       .select([
         "columns.column_name",
         "columns.column_default",
@@ -41,7 +47,7 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
         "columns.table_schema",
         "tables.table_type",
         "columns.is_nullable",
-        "columns.data_type",
+        "columns.data_type"
       ])
       .where("columns.table_schema", "=", sql`current_schema()`)
       .orderBy("columns.table_name")
@@ -59,28 +65,31 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
   }
 
   async getMetadata(
-    options?: DatabaseMetadataOptions,
+    options?: DatabaseMetadataOptions
   ): Promise<DatabaseMetadata> {
     return {
-      tables: await this.getTables(options),
+      tables: await this.getTables(options)
     };
   }
 
   #parseTableMetadata(columns: RawColumnMetadata[]): TableMetadata[] {
     // Build mutable structures first, then freeze at the end to avoid
     // mutating frozen objects during construction.
-    const tableMap = new Map<string, {
-      name: string;
-      isView: boolean;
-      schema: string | undefined;
-      columns: Array<{
+    const tableMap = new Map<
+      string,
+      {
         name: string;
-        dataType: string;
-        isNullable: boolean;
-        isAutoIncrementing: boolean;
-        hasDefaultValue: boolean;
-      }>;
-    }>();
+        isView: boolean;
+        schema: string | undefined;
+        columns: Array<{
+          name: string;
+          dataType: string;
+          isNullable: boolean;
+          isAutoIncrementing: boolean;
+          hasDefaultValue: boolean;
+        }>;
+      }
+    >();
 
     for (const it of columns) {
       const key = `${it.table_schema}.${it.table_name}`;
@@ -90,7 +99,7 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
           name: it.table_name,
           isView: it.table_type === "view",
           schema: it.table_schema,
-          columns: [],
+          columns: []
         };
         tableMap.set(key, tbl);
       }
@@ -100,7 +109,7 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
         dataType: it.data_type,
         isNullable: it.is_nullable === "YES",
         isAutoIncrementing: false,
-        hasDefaultValue: it.column_default !== null,
+        hasDefaultValue: it.column_default !== null
       });
     }
 
@@ -118,10 +127,10 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
               dataType: c.dataType,
               isNullable: c.isNullable,
               isAutoIncrementing: c.isAutoIncrementing,
-              hasDefaultValue: c.hasDefaultValue,
-            }),
-          ),
-        ),
+              hasDefaultValue: c.hasDefaultValue
+            })
+          )
+        )
       });
       tables.push(frozen as unknown as TableMetadata);
     }

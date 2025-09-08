@@ -60,11 +60,11 @@ export class DuckDbQueryCompiler extends DefaultQueryCompiler {
   }
 
   protected override getLeftIdentifierWrapper(): string {
-    return "\"";
+    return '"';
   }
 
   protected override getRightIdentifierWrapper(): string {
-    return "\"";
+    return '"';
   }
 
   protected override getAutoIncrement(): string {
@@ -72,14 +72,16 @@ export class DuckDbQueryCompiler extends DefaultQueryCompiler {
   }
 
   protected override sanitizeIdentifier(identifier: string): string {
-    return identifier.replace(ID_WRAP_REGEX, "\"\"");
+    return identifier.replace(ID_WRAP_REGEX, '""');
   }
 
   protected visitTable(node: TableNode): void {
-    if (Object.prototype.hasOwnProperty.call(
-      this.#configs.tableMappings,
-      node.table.identifier.name,
-    )) {
+    if (
+      Object.prototype.hasOwnProperty.call(
+        this.#configs.tableMappings,
+        node.table.identifier.name
+      )
+    ) {
       this.append(this.#configs.tableMappings[node.table.identifier.name]);
     } else {
       super.visitTable(node);

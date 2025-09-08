@@ -5,10 +5,16 @@ import { setupDb } from "./test_common";
 
 test.skip("select from json file", async () => {
   const kysely = await setupDb();
-  const results = await kysely.selectFrom("person").select(["first_name"]).execute();
+  const results = await kysely
+    .selectFrom("person")
+    .select(["first_name"])
+    .execute();
   expect(results).toEqual([{ first_name: "foo" }]);
 
-  const results2 = await kysely.selectFrom("person").select(["gender"]).execute();
+  const results2 = await kysely
+    .selectFrom("person")
+    .select(["gender"])
+    .execute();
   expect(results2).toEqual([{ gender: "man" }]);
 });
 
@@ -30,7 +36,7 @@ test("select complex data types", async () => {
   expect(row.m).toEqual("{a=text, b=text}");
   expect(row.st).toEqual({ x: 1, y: "a" });
   expect(row.bs).toEqual("010101");
-  expect(row.bl).toEqual(new Uint8Array([0xAA]));
+  expect(row.bl).toEqual(new Uint8Array([0xaa]));
   expect(row.bool).toEqual(true);
   expect(row.dt).toEqual(new Date(Date.UTC(1992, 8, 20)));
   expect(row.ts).toEqual(new Date(Date.UTC(1992, 8, 20, 11, 30, 0, 123)));
@@ -45,13 +51,17 @@ test("select complex data types with where", async () => {
     .selectFrom("t2")
     .selectAll()
     .where("bs", "=", types.bit("010101"))
-    .where("bl", "=", types.blob(new Uint8Array([0xAA])))
+    .where("bl", "=", types.blob(new Uint8Array([0xaa])))
     .where("bool", "=", true)
     .where("dt", "=", types.date(new Date(Date.UTC(1992, 8, 20))))
     .where("int_list", "=", types.list([1, 2, 3]))
     .where("string_list", "=", types.list(["a", "b", "c"]))
     .where("st", "=", types.struct({ x: sql.val(1), y: sql.val("a") }))
-    .where("ts", "=", types.timestamp(new Date(Date.UTC(1992, 8, 20, 11, 30, 0, 123))))
+    .where(
+      "ts",
+      "=",
+      types.timestamp(new Date(Date.UTC(1992, 8, 20, 11, 30, 0, 123)))
+    )
     .where("tsz", "=", types.timestamptz("1992-09-20 11:30:00.123+03:00"))
     .execute();
   expect(results.length).toBe(1);
@@ -73,12 +83,12 @@ test("BLOB helper accepts number[]", async () => {
 
   const results = await kysely
     .selectFrom("t2")
-    .select(["bl"]) 
-    .where("bl", "=", types.blob([0xAA]))
+    .select(["bl"])
+    .where("bl", "=", types.blob([0xaa]))
     .execute();
 
   expect(results.length).toBe(1);
-  expect(results[0].bl).toEqual(new Uint8Array([0xAA]));
+  expect(results[0].bl).toEqual(new Uint8Array([0xaa]));
 });
 
 test("BIT literal conversion returns bit string", async () => {
@@ -98,7 +108,7 @@ test("BLOB literal conversion returns Uint8Array", async () => {
     CompiledQuery.raw("SELECT '\\xAA\\xBB\\xCC'::BLOB AS b;")
   );
   expect(r.rows.length).toBe(1);
-  expect(r.rows[0]["b"]).toEqual(new Uint8Array([0xAA, 0xBB, 0xCC]));
+  expect(r.rows[0]["b"]).toEqual(new Uint8Array([0xaa, 0xbb, 0xcc]));
 });
 
 test("TIMESTAMP microseconds are truncated to milliseconds", async () => {

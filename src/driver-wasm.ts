@@ -79,7 +79,11 @@ class DuckDBConnection implements DatabaseConnection {
       return this.formatToResult(result, sql);
     } finally {
       // Ensure statement resources are released
-      try { await (stmt as any).close?.(); } catch { /* ignore */ }
+      try {
+        await (stmt as any).close?.();
+      } catch {
+        /* ignore */
+      }
     }
   }
 
@@ -93,7 +97,11 @@ class DuckDBConnection implements DatabaseConnection {
       iter = await (stmt as any).send(...parameters);
     } catch (e) {
       // If sending fails, close statement before rethrowing
-      try { await (stmt as any).close?.(); } catch { /* ignore */ }
+      try {
+        await (stmt as any).close?.();
+      } catch {
+        /* ignore */
+      }
       throw e;
     }
 
@@ -106,7 +114,11 @@ class DuckDBConnection implements DatabaseConnection {
         }
       } finally {
         // Close the statement once iteration completes or is aborted
-        try { await (stmt as any).close?.(); } catch { /* ignore */ }
+        try {
+          await (stmt as any).close?.();
+        } catch {
+          /* ignore */
+        }
       }
     };
     return gen();
@@ -402,7 +414,7 @@ class DuckDBConnection implements DatabaseConnection {
           "duckdb.logicalType",
           "duckdb_type",
           "logicalType",
-          "duckdb.logical_type",
+          "duckdb.logical_type"
         ];
         for (const k of keys) {
           const v = md.get(k);
@@ -430,7 +442,7 @@ class DuckDBConnection implements DatabaseConnection {
           "duckdb.logicalType",
           "duckdb_type",
           "logicalType",
-          "duckdb.logical_type",
+          "duckdb.logical_type"
         ];
         for (const k of keys) {
           const v = md.get(k);

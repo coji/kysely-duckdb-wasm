@@ -1,7 +1,9 @@
 import type { SelectQueryBuilder, Simplify } from "kysely";
 import { CompiledQuery, Kysely } from "kysely";
 
-type CompiledQuerySchema<T> = T extends SelectQueryBuilder<any, any, infer O> ? Simplify<O> : never;
+type CompiledQuerySchema<T> = T extends SelectQueryBuilder<any, any, infer O>
+  ? Simplify<O>
+  : never;
 
 /**
  * @alpha
@@ -27,20 +29,22 @@ export class KyselyDuckDbExtension<DB> extends Kysely<DB> {
    * console.log(db2.selectFrom('userNames').selectAll().execute());
    * ```
    */
-  public async createTablesAsSelect<T extends Record<string, SelectQueryBuilder<DB, keyof DB, unknown>>>(
-    tables: T,
-  ): Promise<Kysely<DB & { [K in keyof T]: CompiledQuerySchema<T[K]>; }>> {
+  public async createTablesAsSelect<
+    T extends Record<string, SelectQueryBuilder<DB, keyof DB, unknown>>
+  >(
+    tables: T
+  ): Promise<Kysely<DB & { [K in keyof T]: CompiledQuerySchema<T[K]> }>> {
     const tableNames = Object.keys(tables) as (keyof T)[];
 
     for (const tableName of tableNames) {
       const table = tables[tableName].compile();
       const query = CompiledQuery.raw(
         `CREATE TABLE ${String(tableName)} AS (${table.sql})`,
-        [...table.parameters],
+        [...table.parameters]
       );
       await this.executeQuery(query);
     }
 
-    return this as Kysely<DB & { [K in keyof T]: CompiledQuerySchema<T[K]>; }>;
+    return this as Kysely<DB & { [K in keyof T]: CompiledQuerySchema<T[K]> }>;
   }
 }
