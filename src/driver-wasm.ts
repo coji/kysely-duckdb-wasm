@@ -64,9 +64,13 @@ class DuckDBConnection implements DatabaseConnection {
   async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
     const { sql, parameters } = compiledQuery;
     const stmt = await this.#conn.prepare(sql);
-
-    const result = await stmt.query(...parameters);
-    return this.formatToResult(result, sql);
+    try {
+      const result = await stmt.query(...parameters);
+      return this.formatToResult(result, sql);
+    } finally {
+      // Ensure statement resources are released
+      try { await (stmt as any).close?.(); } catch { /* ignore */ }
+    }
   }
 
   async *streamQuery<R>(
@@ -74,13 +78,25 @@ class DuckDBConnection implements DatabaseConnection {
   ): AsyncIterableIterator<QueryResult<R>> {
     const { sql, parameters } = compiledQuery;
     const stmt = await this.#conn.prepare(sql);
+    let iter: AsyncIterable<any>;
+    try {
+      iter = await (stmt as any).send(...parameters);
+    } catch (e) {
+      // If sending fails, close statement before rethrowing
+      try { await (stmt as any).close?.(); } catch { /* ignore */ }
+      throw e;
+    }
 
-    const iter = await stmt.send(...parameters);
     const self = this;
 
     const gen = async function* () {
-      for await (const result of iter) {
-        yield self.formatToResult(result, sql);
+      try {
+        for await (const result of iter as any) {
+          yield self.formatToResult(result, sql);
+        }
+      } finally {
+        // Close the statement once iteration completes or is aborted
+        try { await (stmt as any).close?.(); } catch { /* ignore */ }
       }
     };
     return gen();
@@ -90,48 +106,40 @@ class DuckDBConnection implements DatabaseConnection {
     result: arrow.Table | arrow.RecordBatch,
     sql: string
   ): QueryResult<O> {
-    const isSelect = sql.toLowerCase().includes("select");
+    const fields = result.schema.fields;
+    const fieldCount = fields.length;
+    const rowsArray = (result as any).toArray?.() ?? [];
 
-    if (isSelect) {
-      // Convert Arrow data to plain JavaScript objects using schema information
-      const rows = result.toArray().map((row) => {
-        const plainObject: any = {};
-        for (let i = 0; i < result.schema.fields.length; i++) {
-          const field = result.schema.fields[i];
-          const key = field.name;
-          const value = row[key];
-          plainObject[key] = this.convertArrowValue(value, field);
-        }
-        return plainObject;
-      });
-      return { rows: rows as O[] };
-    } else {
-      // For INSERT/UPDATE/DELETE, try to get the count from different possible locations
-      let numAffectedRows: bigint | undefined;
-
-      if (result.numRows > 0) {
-        const row = result.get(0);
-        if (row) {
-          // Try different possible field names for the count
-          const count =
-            row["Count"] ||
-            row["count"] ||
-            row["changes"] ||
-            row["rows_affected"];
-          if (typeof count === "number") {
-            numAffectedRows = BigInt(count);
-          } else if (typeof count === "bigint") {
-            numAffectedRows = count;
-          }
-        }
+    // Detect DML without RETURNING: single count-like column
+    if (fieldCount === 1 && rowsArray.length >= 1) {
+      const colName = fields[0].name;
+      if (
+        colName === "Count" ||
+        colName === "count" ||
+        colName === "changes" ||
+        colName === "rows_affected"
+      ) {
+        const first = (result as any).get?.(0) ?? rowsArray[0];
+        const v = first?.[colName];
+        let numAffectedRows: bigint | undefined = undefined;
+        if (typeof v === "number") numAffectedRows = BigInt(v);
+        else if (typeof v === "bigint") numAffectedRows = v;
+        return { rows: [], numAffectedRows, insertId: undefined };
       }
-
-      return {
-        numAffectedRows,
-        insertId: undefined,
-        rows: []
-      };
     }
+
+    // Otherwise, treat as row-producing result (SELECT or DML ... RETURNING)
+    const rows = rowsArray.map((row: any) => {
+      const plainObject: any = {};
+      for (let i = 0; i < fields.length; i++) {
+        const field = fields[i];
+        const key = field.name;
+        const value = row[key];
+        plainObject[key] = this.convertArrowValue(value, field);
+      }
+      return plainObject;
+    });
+    return { rows: rows as O[] };
   }
 
   private convertArrowValue(value: any, field: arrow.Field): any {

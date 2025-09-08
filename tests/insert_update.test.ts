@@ -63,3 +63,18 @@ test("update table", async () => {
   expect(res.length).toBe(1);
   expect(res[0].numUpdatedRows).toBe(BigInt(1));
 });
+
+test("insert returning rows", async () => {
+  const kysely = await setupDb();
+
+  const inserted = await kysely
+    .insertInto("t1")
+    .values({ a: 20, b: 21 })
+    .returningAll()
+    .execute();
+
+  expect(inserted).toEqual([{ a: 20, b: 21 }]);
+
+  const all = await kysely.selectFrom("t1").selectAll().execute();
+  expect(all.find((r) => r.a === 20 && r.b === 21)).toBeTruthy();
+});
