@@ -36,7 +36,7 @@ test("insert into complex types", async () => {
         y: sql`${"aaa"}`,
       }),
       bs: types.bit("010101"),
-      bl: types.blob(Buffer.from([0xBB, 0xCC])),
+      bl: types.blob(new Uint8Array([0xBB, 0xCC])),
       bool: true,
       dt: types.date(new Date()),
       ts: types.timestamp(new Date()),

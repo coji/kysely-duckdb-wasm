@@ -1,4 +1,4 @@
-import * as duckdb from "duckdb";
+import * as duckdb from "@duckdb/duckdb-wasm";
 import type { DuckDBNodeDataTypes } from "../src/helper/datatypes";
 import { datatypes } from "../src/index";
 import { DuckDbDialect } from "../src/index";
@@ -37,7 +37,23 @@ export interface PersonTable {
 }
 
 export const setupDb = async () => {
-  const db = new duckdb.Database(":memory:");
+  // Try using local npm bundle instead of CDN to avoid CORS issues
+  const bundle = await duckdb.selectBundle({
+    mvp: {
+      mainModule: '/node_modules/@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm',
+      mainWorker: '/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js'
+    },
+    eh: {
+      mainModule: '/node_modules/@duckdb/duckdb-wasm/dist/duckdb-eh.wasm',
+      mainWorker: '/node_modules/@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js'
+    }
+  });
+  
+  const worker = new Worker(bundle.mainWorker!);
+  const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.WARNING);
+  const db = new duckdb.AsyncDuckDB(logger, worker);
+  await db.instantiate(bundle.mainModule, bundle.pthreadWorker);
+
   const duckdbDialect = new DuckDbDialect({
     database: db,
     tableMappings: {

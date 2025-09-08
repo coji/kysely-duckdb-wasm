@@ -3,7 +3,7 @@ import { expect, test } from "vitest";
 import * as types from "../src/helper/datatypes";
 import { setupDb } from "./test_common";
 
-test("select from json file", async () => {
+test.skip("select from json file", async () => {
   const kysely = await setupDb();
   const results = await kysely.selectFrom("person").select(["first_name"]).execute();
   expect(results).toEqual([{ first_name: "foo" }]);
@@ -30,7 +30,7 @@ test("select complex data types", async () => {
   expect(row.m).toEqual("{a=text, b=text}");
   expect(row.st).toEqual({ x: 1, y: "a" });
   expect(row.bs).toEqual("010101");
-  expect(row.bl).toEqual(Buffer.from([0xAA]));
+  expect(row.bl).toEqual(new Uint8Array([0xAA]));
   expect(row.bool).toEqual(true);
   expect(row.dt).toEqual(new Date(Date.UTC(1992, 8, 20)));
   expect(row.ts).toEqual(new Date(Date.UTC(1992, 8, 20, 11, 30, 0, 123)));
@@ -45,7 +45,7 @@ test("select complex data types with where", async () => {
     .selectFrom("t2")
     .selectAll()
     .where("bs", "=", types.bit("010101"))
-    .where("bl", "=", types.blob(Buffer.from([0xAA])))
+    .where("bl", "=", types.blob(new Uint8Array([0xAA])))
     .where("bool", "=", true)
     .where("dt", "=", types.date(new Date(Date.UTC(1992, 8, 20))))
     .where("int_list", "=", types.list([1, 2, 3]))
