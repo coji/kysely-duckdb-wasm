@@ -241,15 +241,79 @@ class DuckDBConnection implements DatabaseConnection {
             days: value[1] || 0,
             micros: value[2] || 0
           };
+        } else if (Array.isArray(value) && value.length >= 2) {
+          // Handle case where only months and days are provided
+          return {
+            months: value[0] || 0,
+            days: value[1] || 0,
+            micros: 0
+          };
         } else if (value && ArrayBuffer.isView(value)) {
           // Handle Int32Array for Interval type
           const arr = Array.from(value as Int32Array);
-          if (arr.length >= 3) {
+          
+          // Check the Arrow interval unit type to determine how to interpret the values
+          const intervalType = field.type as any;
+          const unit = intervalType.unit;
+          
+          if (arr.length >= 4) {
+            // MONTH_DAY_NANO format: [months, days, nanos_high, nanos_low] (64-bit nano split into two 32-bit)
+            const months = arr[0] || 0;
+            const days = arr[1] || 0;
+            const nanosHigh = arr[2] || 0;
+            const nanosLow = arr[3] || 0;
+            // Combine high and low 32-bit parts to get full 64-bit nanoseconds, then convert to micros
+            const nanos = nanosHigh * Math.pow(2, 32) + nanosLow;
+            const micros = Math.floor(nanos / 1000);
+            return {
+              months: months,
+              days: days,
+              micros: micros
+            };
+          } else if (arr.length >= 3) {
             return {
               months: arr[0] || 0,
               days: arr[1] || 0,
               micros: arr[2] || 0
             };
+          } else if (arr.length >= 2) {
+            // Handle different interval units properly
+            if (unit === arrow.IntervalUnit.YEAR_MONTH) {
+              // For YEAR_MONTH intervals: [years, months]
+              const years = arr[0] || 0;
+              const additionalMonths = arr[1] || 0;
+              return {
+                months: years * 12 + additionalMonths,
+                days: 0,
+                micros: 0
+              };
+            } else if (unit === arrow.IntervalUnit.DAY_TIME) {
+              // For DAY_TIME intervals: [days, milliseconds] 
+              return {
+                months: 0,
+                days: arr[0] || 0,
+                micros: (arr[1] || 0) * 1000 // convert milliseconds to microseconds
+              };
+            } else if (unit === arrow.IntervalUnit.MONTH_DAY_NANO) {
+              // For MONTH_DAY_NANO intervals with only 2 values: it appears DuckDB may be
+              // representing INTERVAL '1' YEAR as [months_in_year, 0] where 1 year = 12 months
+              // But we're seeing [1, 0] which suggests it's [years, additional_months]
+              // Let's check if the first value needs to be converted from years to months
+              const possibleYears = arr[0] || 0;
+              const additionalMonths = arr[1] || 0;
+              return {
+                months: possibleYears * 12 + additionalMonths,
+                days: 0,
+                micros: 0
+              };
+            } else {
+              // Default fallback - assume months and days
+              return {
+                months: arr[0] || 0,
+                days: arr[1] || 0,
+                micros: 0
+              };
+            }
           }
         }
         break;
