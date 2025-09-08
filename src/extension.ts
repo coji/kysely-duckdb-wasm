@@ -1,5 +1,5 @@
 import type { SelectQueryBuilder, Simplify } from "kysely";
-import { CompiledQuery, Kysely } from "kysely";
+import { Kysely, sql } from "kysely";
 
 type CompiledQuerySchema<T> = T extends SelectQueryBuilder<any, any, infer O>
   ? Simplify<O>
@@ -37,12 +37,16 @@ export class KyselyDuckDbExtension<DB> extends Kysely<DB> {
     const tableNames = Object.keys(tables) as (keyof T)[];
 
     for (const tableName of tableNames) {
-      const table = tables[tableName].compile();
-      const query = CompiledQuery.raw(
-        `CREATE TABLE ${String(tableName)} AS (${table.sql})`,
-        [...table.parameters]
-      );
-      await this.executeQuery(query);
+      const name = String(tableName);
+      const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
+      if (!IDENTIFIER_RE.test(name)) {
+        throw new Error(
+          `Invalid table name: ${name}. Names must match ${IDENTIFIER_RE.source}`,
+        );
+      }
+
+      const ctas = sql`CREATE TABLE ${sql.id(name)} AS (${tables[tableName]})`;
+      await this.executeQuery(ctas.compile(this));
     }
 
     return this as Kysely<DB & { [K in keyof T]: CompiledQuerySchema<T[K]> }>;
