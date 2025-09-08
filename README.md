@@ -15,24 +15,24 @@ npm install --save kysely @duckdb/duckdb-wasm @coji/kysely-duckdb-wasm
 ### Usage
 
 ```ts
-import * as duckdb from "@duckdb/duckdb-wasm";
-import duckdbWorker from "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?worker";
-import duckdbWasm from "@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url";
-import { Kysely } from "kysely";
-import { DuckDbDialect } from "@coji/kysely-duckdb-wasm";
+import * as duckdb from '@duckdb/duckdb-wasm'
+import duckdbWorker from '@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?worker'
+import duckdbWasm from '@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url'
+import { Kysely } from 'kysely'
+import { DuckDbDialect } from '@coji/kysely-duckdb-wasm'
 
-const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.ERROR);
-const worker = new duckdbWorker();
-const db = new duckdb.AsyncDuckDB(logger, worker);
-await db.instantiate(duckdbWasm);
+const logger = new duckdb.ConsoleLogger(duckdb.LogLevel.ERROR)
+const worker = new duckdbWorker()
+const db = new duckdb.AsyncDuckDB(logger, worker)
+await db.instantiate(duckdbWasm)
 
 const duckdbDialect = new DuckDbDialect({
   database: db,
-  tableMappings: {}
-});
+  tableMappings: {},
+})
 
-const kysely = new Kysely<DatabaseSchema>({ dialect: duckdbDialect });
-const res = await kysely.selectFrom("person").selectAll().execute();
+const kysely = new Kysely<DatabaseSchema>({ dialect: duckdbDialect })
+const res = await kysely.selectFrom('person').selectAll().execute()
 ```
 
 ### Configurations

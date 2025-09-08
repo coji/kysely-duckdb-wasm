@@ -2,14 +2,19 @@ name: test
 
 on:
   pull_request:
-    branches: ["main"]
+    branches: ['main']
   push:
-    branches: ["main"]
+    branches: ['main']
   workflow_dispatch:
 
 jobs:
-  test:
+  checks:
+    name: ${{ matrix.task }}
     runs-on: ubuntu-22.04
+    strategy:
+      fail-fast: false
+      matrix:
+        task: [format, lint, typecheck, test, build, docs]
     steps:
       - uses: actions/checkout@v4
 
@@ -20,11 +25,32 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: "20"
-          cache: "pnpm"
+          node-version: '20'
+          cache: 'pnpm'
 
-      - run: pnpm install
+      - run: pnpm install --frozen-lockfile
 
-      - run: pnpm exec playwright install
+      # Cache Playwright browser downloads to speed up test job
+      - name: Cache Playwright browsers
+        if: matrix.task == 'test'
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
 
-      - run: pnpm run check && pnpm run test
+      - name: Install Playwright browsers
+        if: matrix.task == 'test'
+        run: pnpm exec playwright install
+
+      - name: Run ${{ matrix.task }}
+        run: |
+          case "${{ matrix.task }}" in
+            format) pnpm run format ;;
+            lint) pnpm run lint ;;
+            typecheck) pnpm run typecheck ;;
+            test) pnpm run test ;;
+            build) pnpm run build ;;
+            docs) pnpm run docs ;;
+          esac

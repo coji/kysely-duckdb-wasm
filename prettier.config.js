@@ -1,7 +1,7 @@
 export default {
   semi: false,
   singleQuote: true,
-  trailingComma: "all",
+  trailingComma: 'all',
   printWidth: 80,
-  plugins: ["prettier-plugin-organize-imports"]
-};
+  plugins: ['prettier-plugin-organize-imports'],
+}

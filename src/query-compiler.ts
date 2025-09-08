@@ -1,6 +1,6 @@
-import { DefaultQueryCompiler, TableNode } from "kysely";
+import { DefaultQueryCompiler, type TableNode } from 'kysely'
 
-const ID_WRAP_REGEX = /"/g;
+const ID_WRAP_REGEX = /"/g
 
 export interface DuckDbQueryCompilerConfigs {
   /**
@@ -35,81 +35,79 @@ export interface DuckDbQueryCompilerConfigs {
    * // => Executed query is: `SELECT * FROM pet;`
    */
   tableMappings: {
-    [tableName: string]: string;
-  };
+    [tableName: string]: string
+  }
 }
 
 export class DuckDbQueryCompiler extends DefaultQueryCompiler {
-  #configs: DuckDbQueryCompilerConfigs;
+  #configs: DuckDbQueryCompilerConfigs
 
   constructor(configs: DuckDbQueryCompilerConfigs) {
-    super();
-    this.#configs = configs;
+    super()
+    this.#configs = configs
   }
 
   protected override getCurrentParameterPlaceholder() {
-    return "?";
+    return '?'
   }
 
   protected override getLeftExplainOptionsWrapper(): string {
-    return "";
+    return ''
   }
 
   protected override getRightExplainOptionsWrapper(): string {
-    return "";
+    return ''
   }
 
   protected override getLeftIdentifierWrapper(): string {
-    return '"';
+    return '"'
   }
 
   protected override getRightIdentifierWrapper(): string {
-    return '"';
+    return '"'
   }
 
   protected override getAutoIncrement(): string {
-    throw new Error("Can not use auto increment in DuckDB");
+    throw new Error('Can not use auto increment in DuckDB')
   }
 
   protected override sanitizeIdentifier(identifier: string): string {
-    return identifier.replace(ID_WRAP_REGEX, '""');
+    return identifier.replace(ID_WRAP_REGEX, '""')
   }
 
   protected visitTable(node: TableNode): void {
-    const name = node.table.identifier.name;
-    if (
-      Object.prototype.hasOwnProperty.call(this.#configs.tableMappings, name)
-    ) {
+    const name = node.table.identifier.name
+    if (Object.hasOwn(this.#configs.tableMappings, name)) {
       // Append the mapped table expression
-      this.append(this.#configs.tableMappings[name]);
+      this.append(this.#configs.tableMappings[name])
 
       // Preserve alias if present and not already handled by an AliasNode parent
-      const parent: any = (this as any).parentNode;
-      const parentIsAlias = parent && parent.kind === "AliasNode";
+      const parent: any = (this as any).parentNode
+      const parentIsAlias = parent && parent.kind === 'AliasNode'
 
       // Some Kysely versions carry alias as a separate AliasNode (preferred),
       // but if it exists on the table node, append it here.
       if (!parentIsAlias) {
-        const alias: any = (node as any).alias ?? (node.table as any).alias;
+        const alias: any = (node as any).alias ?? (node.table as any).alias
         if (alias) {
-          this.append(" as ");
+          this.append(' as ')
           // alias may be an operation node or a plain identifier-like node
           if (alias.kind) {
-            this.visitNode(alias);
-          } else if (typeof alias === "string") {
-            this.append(this.getLeftIdentifierWrapper());
-            this.append(this.sanitizeIdentifier(alias));
-            this.append(this.getRightIdentifierWrapper());
+            this.visitNode(alias)
+          } else if (typeof alias === 'string') {
+            this.append(this.getLeftIdentifierWrapper())
+            this.append(this.sanitizeIdentifier(alias))
+            this.append(this.getRightIdentifierWrapper())
           } else if (alias.identifier?.name) {
             // Handle IdentifierNode-like shape
-            this.append(this.getLeftIdentifierWrapper());
-            this.append(this.sanitizeIdentifier(alias.identifier.name));
-            this.append(this.getRightIdentifierWrapper());
+            this.append(this.getLeftIdentifierWrapper())
+            this.append(this.sanitizeIdentifier(alias.identifier.name))
+            this.append(this.getRightIdentifierWrapper())
           }
         }
       }
-      return;
+      return
     }
-    super.visitTable(node);
+    super.visitTable(node)
   }
 }

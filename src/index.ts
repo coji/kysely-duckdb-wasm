@@ -1,24 +1,24 @@
-import {
-  type DatabaseIntrospector,
-  type Dialect,
-  type DialectAdapter,
-  type Driver,
+import type {
+  DatabaseIntrospector,
+  Dialect,
+  DialectAdapter,
+  Driver,
   Kysely,
-  type QueryCompiler,
-  type Simplify
-} from "kysely";
+  QueryCompiler,
+  Simplify,
+} from 'kysely'
 
-import { DuckDbAdapter } from "./adapter";
-import { DuckDbWasmDriver, type DuckDbWasmDriverConfig } from "./driver-wasm";
-import { DuckDbIntrospector } from "./introspector";
+import { DuckDbAdapter } from './adapter'
+import { DuckDbWasmDriver, type DuckDbWasmDriverConfig } from './driver-wasm'
+import { DuckDbIntrospector } from './introspector'
 import {
   DuckDbQueryCompiler,
-  type DuckDbQueryCompilerConfigs
-} from "./query-compiler";
+  type DuckDbQueryCompilerConfigs,
+} from './query-compiler'
 
 export type DuckDbDialectConfig = Simplify<
   DuckDbWasmDriverConfig & DuckDbQueryCompilerConfigs
->;
+>
 /**
  * Kysely dialect for duckdb.
  *
@@ -68,19 +68,19 @@ export class DuckDbDialect implements Dialect {
    */
   constructor(private readonly config: DuckDbDialectConfig) {}
   createQueryCompiler(): QueryCompiler {
-    return new DuckDbQueryCompiler(this.config);
+    return new DuckDbQueryCompiler(this.config)
   }
   createIntrospector(db: Kysely<any>): DatabaseIntrospector {
-    return new DuckDbIntrospector(db);
+    return new DuckDbIntrospector(db)
   }
   createDriver(): Driver {
-    return new DuckDbWasmDriver(this.config);
+    return new DuckDbWasmDriver(this.config)
   }
   createAdapter(): DialectAdapter {
-    return new DuckDbAdapter();
+    return new DuckDbAdapter()
   }
 }
 
-export * as datatypes from "./helper/datatypes";
-export type { DuckDBWasmDataTypes } from "./helper/datatypes";
-export { DuckDbWasmDriver, type DuckDbWasmDriverConfig } from "./driver-wasm";
+export { DuckDbWasmDriver, type DuckDbWasmDriverConfig } from './driver-wasm'
+export * as datatypes from './helper/datatypes'
+export type { DuckDBWasmDataTypes } from './helper/datatypes'

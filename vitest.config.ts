@@ -1,4 +1,4 @@
-import { defineConfig } from "vitest/config";
+import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
   test: {
@@ -6,14 +6,14 @@ export default defineConfig({
       enabled: true,
       instances: [
         {
-          browser: "chromium",
-          headless: true
-        }
+          browser: 'chromium',
+          headless: true,
+        },
       ],
-      provider: "playwright"
-    }
+      provider: 'playwright',
+    },
   },
   optimizeDeps: {
-    exclude: ["@duckdb/duckdb-wasm"]
-  }
-});
+    exclude: ['@duckdb/duckdb-wasm'],
+  },
+})

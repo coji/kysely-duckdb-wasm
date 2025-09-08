@@ -10,12 +10,15 @@
   "type": "module",
   "scripts": {
     "test": "vitest",
+    "test:run": "vitest run",
     "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --sourcemap",
     "format": "prettier . --check --experimental-cli",
     "format:fix": "prettier . --write --experimental-cli",
-    "check": "tsc --noEmit",
+    "lint": "biome lint .",
+    "lint:fix": "biome lint . --write",
+    "typecheck": "tsc --noEmit",
     "docs": "typedoc src/index.ts",
-    "all": "npm run check && npm run test && npm run build && npm run docs"
+    "validate": "pnpm run format && pnpm run lint && pnpm run typecheck && pnpm run test:run && pnpm run build && pnpm run docs"
   },
   "keywords": [
     "kysely",
@@ -26,11 +29,11 @@
   "author": "coji",
   "license": "MIT",
   "devDependencies": {
+    "@biomejs/biome": "2.2.3",
     "@duckdb/duckdb-wasm": "1.29.1-dev283.0",
     "@types/node": "^24.3.1",
     "@vitest/browser": "3.2.4",
     "apache-arrow": "17.0.0",
-    "dprint": "^0.50.1",
     "playwright": "1.55.0",
     "prettier": "3.6.2",
     "prettier-plugin-organize-imports": "4.2.0",
@@ -44,10 +47,5 @@
     "@duckdb/duckdb-wasm": "*",
     "apache-arrow": "*",
     "kysely": "^0.28"
-  },
-  "prettier": {
-    "semi": true,
-    "singleQuote": false,
-    "trailingComma": "none"
   }
 }
