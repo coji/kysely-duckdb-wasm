@@ -74,9 +74,12 @@ const isRawBuilder = (v: unknown): v is RawBuilder<any> =>
 export const struct = (
   values: Record<string, RawBuilder<any> | unknown>
 ): RawBuilder<any> => {
+  const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
   Object.keys(values).forEach((k) => {
-    if (k.includes("'") || k.includes("{") || k.includes("}")) {
-      throw new Error(`Invalid Struct key found: ${k}`);
+    if (!IDENTIFIER_RE.test(k)) {
+      throw new Error(
+        `Invalid struct key: ${k}. Keys must match ${IDENTIFIER_RE.source}`,
+      );
     }
   });
   return sql`{${sql.join(
