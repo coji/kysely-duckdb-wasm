@@ -24,15 +24,17 @@
   "author": "coji",
   "license": "MIT",
   "devDependencies": {
-    "@types/node": "^24.0.4",
+    "@types/node": "^24.3.1",
     "@vitest/browser": "3.2.4",
-    "dprint": "^0.50.0",
+    "dprint": "^0.50.1",
     "playwright": "1.55.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
-    "typedoc": "^0.28.5",
-    "typescript": "^5.8.3",
-    "vitest": "^3.2.4"
+    "typedoc": "^0.28.12",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "@duckdb/duckdb-wasm": "1.29.1-dev283.0",
+    "apache-arrow": "17.0.0"
   },
   "peerDependencies": {
     "@duckdb/duckdb-wasm": "*",
