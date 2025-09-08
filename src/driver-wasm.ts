@@ -41,7 +41,7 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async beginTransaction(connection: DatabaseConnection): Promise<void> {
-    await connection.executeQuery(CompiledQuery.raw("BEGIN TRANSACTION"));
+    await connection.executeQuery(CompiledQuery.raw("BEGIN"));
   }
 
   async commitTransaction(connection: DatabaseConnection): Promise<void> {
