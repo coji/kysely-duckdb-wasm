@@ -6,7 +6,7 @@ import type { DatabaseConnection, Driver, QueryResult } from "kysely";
 export interface DuckDbWasmDriverConfig {
   database: (() => Promise<duckdb.AsyncDuckDB>) | duckdb.AsyncDuckDB;
   onCreateConnection?: (
-    conection: duckdb.AsyncDuckDBConnection
+    connection: duckdb.AsyncDuckDBConnection
   ) => Promise<void>;
 }
 
@@ -19,6 +19,7 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async init(): Promise<void> {
+    if (this.#db) return; // idempotent
     this.#db =
       typeof this.#config.database === "function"
         ? await this.#config.database()
@@ -26,7 +27,13 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async acquireConnection(): Promise<DatabaseConnection> {
-    const conn = await this.#db!.connect();
+    const db = this.#db;
+    if (!db) {
+      throw new Error(
+        "DuckDbWasmDriver not initialized. Call init() before acquiring connections."
+      );
+    }
+    const conn = await db.connect();
     if (this.#config.onCreateConnection) {
       await this.#config.onCreateConnection(conn);
     }
@@ -50,7 +57,10 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async destroy(): Promise<void> {
-    await this.#db!.terminate();
+    if (this.#db) {
+      await this.#db.terminate();
+      this.#db = undefined;
+    }
   }
 }
 
@@ -165,18 +175,31 @@ class DuckDBConnection implements DatabaseConnection {
     // Handle different DuckDB/Arrow data types based on both Arrow type and DuckDB metadata
     switch (type.typeId) {
       case arrow.Type.Date:
-      case arrow.Type.DateDay:
-      case arrow.Type.DateMillisecond:
-        if (typeof value === "number") {
-          return new Date(value);
-        }
-        break;
+      case arrow.Type.DateDay: {
+        return this.toDateFromValue(value);
+      }
 
-      case arrow.Type.Timestamp:
+      case arrow.Type.DateMillisecond: {
+        return this.toDateFromValue(value);
+      }
+
+      case arrow.Type.Timestamp: {
+        if (value instanceof Date) return value;
+        if (typeof value === "string") {
+          // Normalize to ISO string. If no timezone provided, assume UTC.
+          if (/Z|[+-]\d{2}:?\d{2}$/.test(value)) {
+            // Has timezone info
+            return new Date(value.replace(" ", "T"));
+          }
+          const iso = value.replace(" ", "T") + "Z";
+          return new Date(iso);
+        }
         if (typeof value === "number" || typeof value === "bigint") {
+          // Treat as milliseconds since epoch (DuckDB WASM Arrow tends to use ms)
           return new Date(Number(value));
         }
         break;
+      }
 
       case arrow.Type.Struct:
         if (value && typeof value === "object") {
@@ -445,6 +468,55 @@ class DuckDBConnection implements DatabaseConnection {
       );
     }
     return false;
+  }
+
+  private toDateFromValue(value: any): any {
+    if (value instanceof Date) return value;
+
+    if (typeof value === "number" || typeof value === "bigint") {
+      const num = Number(value);
+      if (Number.isNaN(num)) return new Date(NaN);
+      // Heuristic: small numbers are likely days since epoch, large are ms
+      if (Math.abs(num) < 1e7) {
+        return new Date(num * 86400000);
+      }
+      return new Date(num);
+    }
+
+    if (typeof value === "string") {
+      // Accept YYYY-MM-DD or YYYY-MM-DD[ T]HH:mm:ss(.fraction)
+      const m = value.match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?)?$/
+      );
+      if (m) {
+        const y = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10) - 1;
+        const d = parseInt(m[3], 10);
+        const hh = m[4] ? parseInt(m[4], 10) : 0;
+        const mm = m[5] ? parseInt(m[5], 10) : 0;
+        const ss = m[6] ? parseInt(m[6], 10) : 0;
+        let ms = 0;
+        if (m[7]) {
+          // Fraction can be up to microseconds; truncate to milliseconds
+          const frac = (m[7] + "000").slice(0, 3); // pad to 3 and slice
+          ms = parseInt(frac, 10);
+        }
+        return new Date(Date.UTC(y, mo, d, hh, mm, ss, ms));
+      }
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+      return new Date(NaN);
+    }
+
+    if (value && ArrayBuffer.isView(value) && (value as any).length === 1) {
+      const num = Number((value as any)[0]);
+      if (!Number.isNaN(num)) {
+        if (Math.abs(num) < 1e7) return new Date(num * 86400000);
+        return new Date(num);
+      }
+    }
+
+    return value;
   }
 
   async disconnect(): Promise<void> {

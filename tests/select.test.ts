@@ -76,3 +76,27 @@ test("BLOB literal conversion returns Uint8Array", async () => {
   expect(r.rows.length).toBe(1);
   expect(r.rows[0]["b"]).toEqual(new Uint8Array([0xAA, 0xBB, 0xCC]));
 });
+
+test("TIMESTAMP microseconds are truncated to milliseconds", async () => {
+  const kysely = await setupDb();
+
+  const r = await kysely.executeQuery(
+    CompiledQuery.raw("SELECT TIMESTAMP '1970-01-01 00:00:00.001234' AS t;")
+  );
+  expect(r.rows.length).toBe(1);
+  expect(r.rows[0]["t"]).toEqual(new Date(Date.UTC(1970, 0, 1, 0, 0, 0, 1)));
+});
+
+test("TIMESTAMPTZ with offset converts to UTC", async () => {
+  const kysely = await setupDb();
+
+  const r = await kysely.executeQuery(
+    CompiledQuery.raw(
+      "SELECT TIMESTAMPTZ '1992-09-20 11:30:00.123+03:00' AS t;"
+    )
+  );
+  expect(r.rows.length).toBe(1);
+  expect(r.rows[0]["t"]).toEqual(
+    new Date(Date.UTC(1992, 8, 20, 8, 30, 0, 123))
+  );
+});
