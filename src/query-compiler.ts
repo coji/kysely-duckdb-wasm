@@ -1,4 +1,4 @@
-import { DefaultQueryCompiler, TableNode, TupleNode, ValueListNode, WhereNode } from "kysely";
+import { DefaultQueryCompiler, TableNode } from "kysely";
 
 const ID_WRAP_REGEX = /"/g;
 
@@ -76,7 +76,10 @@ export class DuckDbQueryCompiler extends DefaultQueryCompiler {
   }
 
   protected visitTable(node: TableNode): void {
-    if (Object.hasOwn(this.#configs.tableMappings, node.table.identifier.name)) {
+    if (Object.prototype.hasOwnProperty.call(
+      this.#configs.tableMappings,
+      node.table.identifier.name,
+    )) {
       this.append(this.#configs.tableMappings[node.table.identifier.name]);
     } else {
       super.visitTable(node);
