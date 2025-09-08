@@ -57,6 +57,17 @@ test("select complex data types with where", async () => {
   expect(results.length).toBe(1);
 });
 
+test("select struct with plain values in where", async () => {
+  const kysely = await setupDb();
+
+  const results = await kysely
+    .selectFrom("t2")
+    .selectAll()
+    .where("st", "=", types.struct({ x: 1, y: "a" }))
+    .execute();
+  expect(results.length).toBe(1);
+});
+
 test("BIT literal conversion returns bit string", async () => {
   const kysely = await setupDb();
 

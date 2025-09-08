@@ -59,8 +59,11 @@ export const map = <K, V>(values: [K, V][]): RawBuilder<any> => {
   const toEntry = ([k, v]: [K, V]) => sql`(${k}, ${v})`;
   return sql`map_from_entries([${sql.join(values.map(toEntry))}])`;
 };
+const isRawBuilder = (v: unknown): v is RawBuilder<any> =>
+  !!v && typeof (v as any).toOperationNode === "function";
+
 export const struct = (
-  values: Record<string, RawBuilder<any>>
+  values: Record<string, RawBuilder<any> | unknown>
 ): RawBuilder<any> => {
   Object.keys(values).forEach((k) => {
     if (k.includes("'") || k.includes("{") || k.includes("}")) {
@@ -68,7 +71,11 @@ export const struct = (
     }
   });
   return sql`{${sql.join(
-    Object.entries(values).map(([key, value]) => sql`${sql.lit(key)}: ${value}`)
+    Object.entries(values).map(([key, value]) =>
+      isRawBuilder(value)
+        ? sql`${sql.lit(key)}: ${value}`
+        : sql`${sql.lit(key)}: ${sql.val(value)}`,
+    )
   )}}`;
 };
 export const timestamp = <T extends Date | string>(value: T): RawBuilder<T> => {
