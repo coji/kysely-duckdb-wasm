@@ -76,15 +76,40 @@ export class DuckDbQueryCompiler extends DefaultQueryCompiler {
   }
 
   protected visitTable(node: TableNode): void {
+    const name = node.table.identifier.name;
     if (
-      Object.prototype.hasOwnProperty.call(
-        this.#configs.tableMappings,
-        node.table.identifier.name
-      )
+      Object.prototype.hasOwnProperty.call(this.#configs.tableMappings, name)
     ) {
-      this.append(this.#configs.tableMappings[node.table.identifier.name]);
-    } else {
-      super.visitTable(node);
+      // Append the mapped table expression
+      this.append(this.#configs.tableMappings[name]);
+
+      // Preserve alias if present and not already handled by an AliasNode parent
+      const parent: any = (this as any).parentNode;
+      const parentIsAlias = parent && parent.kind === "AliasNode";
+
+      // Some Kysely versions carry alias as a separate AliasNode (preferred),
+      // but if it exists on the table node, append it here.
+      if (!parentIsAlias) {
+        const alias: any = (node as any).alias ?? (node.table as any).alias;
+        if (alias) {
+          this.append(" as ");
+          // alias may be an operation node or a plain identifier-like node
+          if (alias.kind) {
+            this.visitNode(alias);
+          } else if (typeof alias === "string") {
+            this.append(this.getLeftIdentifierWrapper());
+            this.append(this.sanitizeIdentifier(alias));
+            this.append(this.getRightIdentifierWrapper());
+          } else if (alias.identifier?.name) {
+            // Handle IdentifierNode-like shape
+            this.append(this.getLeftIdentifierWrapper());
+            this.append(this.sanitizeIdentifier(alias.identifier.name));
+            this.append(this.getRightIdentifierWrapper());
+          }
+        }
+      }
+      return;
     }
+    super.visitTable(node);
   }
 }
