@@ -1,4 +1,4 @@
-import { DefaultQueryCompiler, TableNode, TupleNode, ValueListNode, WhereNode } from "kysely";
+import { DefaultQueryCompiler, TableNode } from "kysely";
 
 const ID_WRAP_REGEX = /"/g;
 
@@ -60,11 +60,11 @@ export class DuckDbQueryCompiler extends DefaultQueryCompiler {
   }
 
   protected override getLeftIdentifierWrapper(): string {
-    return "\"";
+    return '"';
   }
 
   protected override getRightIdentifierWrapper(): string {
-    return "\"";
+    return '"';
   }
 
   protected override getAutoIncrement(): string {
@@ -72,14 +72,44 @@ export class DuckDbQueryCompiler extends DefaultQueryCompiler {
   }
 
   protected override sanitizeIdentifier(identifier: string): string {
-    return identifier.replace(ID_WRAP_REGEX, "\"\"");
+    return identifier.replace(ID_WRAP_REGEX, '""');
   }
 
   protected visitTable(node: TableNode): void {
-    if (Object.hasOwn(this.#configs.tableMappings, node.table.identifier.name)) {
-      this.append(this.#configs.tableMappings[node.table.identifier.name]);
-    } else {
-      super.visitTable(node);
+    const name = node.table.identifier.name;
+    if (
+      Object.prototype.hasOwnProperty.call(this.#configs.tableMappings, name)
+    ) {
+      // Append the mapped table expression
+      this.append(this.#configs.tableMappings[name]);
+
+      // Preserve alias if present and not already handled by an AliasNode parent
+      const parent: any = (this as any).parentNode;
+      const parentIsAlias = parent && parent.kind === "AliasNode";
+
+      // Some Kysely versions carry alias as a separate AliasNode (preferred),
+      // but if it exists on the table node, append it here.
+      if (!parentIsAlias) {
+        const alias: any = (node as any).alias ?? (node.table as any).alias;
+        if (alias) {
+          this.append(" as ");
+          // alias may be an operation node or a plain identifier-like node
+          if (alias.kind) {
+            this.visitNode(alias);
+          } else if (typeof alias === "string") {
+            this.append(this.getLeftIdentifierWrapper());
+            this.append(this.sanitizeIdentifier(alias));
+            this.append(this.getRightIdentifierWrapper());
+          } else if (alias.identifier?.name) {
+            // Handle IdentifierNode-like shape
+            this.append(this.getLeftIdentifierWrapper());
+            this.append(this.sanitizeIdentifier(alias.identifier.name));
+            this.append(this.getRightIdentifierWrapper());
+          }
+        }
+      }
+      return;
     }
+    super.visitTable(node);
   }
 }

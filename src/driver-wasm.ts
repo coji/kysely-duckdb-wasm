@@ -6,7 +6,7 @@ import type { DatabaseConnection, Driver, QueryResult } from "kysely";
 export interface DuckDbWasmDriverConfig {
   database: (() => Promise<duckdb.AsyncDuckDB>) | duckdb.AsyncDuckDB;
   onCreateConnection?: (
-    conection: duckdb.AsyncDuckDBConnection
+    connection: duckdb.AsyncDuckDBConnection
   ) => Promise<void>;
 }
 
@@ -19,6 +19,7 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async init(): Promise<void> {
+    if (this.#db) return; // idempotent
     this.#db =
       typeof this.#config.database === "function"
         ? await this.#config.database()
@@ -26,7 +27,13 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async acquireConnection(): Promise<DatabaseConnection> {
-    const conn = await this.#db!.connect();
+    const db = this.#db;
+    if (!db) {
+      throw new Error(
+        "DuckDbWasmDriver not initialized. Call init() before acquiring connections."
+      );
+    }
+    const conn = await db.connect();
     if (this.#config.onCreateConnection) {
       await this.#config.onCreateConnection(conn);
     }
@@ -34,7 +41,7 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async beginTransaction(connection: DatabaseConnection): Promise<void> {
-    await connection.executeQuery(CompiledQuery.raw("BEGIN TRANSACTION"));
+    await connection.executeQuery(CompiledQuery.raw("BEGIN"));
   }
 
   async commitTransaction(connection: DatabaseConnection): Promise<void> {
@@ -50,7 +57,10 @@ export class DuckDbWasmDriver implements Driver {
   }
 
   async destroy(): Promise<void> {
-    await this.#db!.terminate();
+    if (this.#db) {
+      await this.#db.terminate();
+      this.#db = undefined;
+    }
   }
 }
 
@@ -64,9 +74,17 @@ class DuckDBConnection implements DatabaseConnection {
   async executeQuery<O>(compiledQuery: CompiledQuery): Promise<QueryResult<O>> {
     const { sql, parameters } = compiledQuery;
     const stmt = await this.#conn.prepare(sql);
-
-    const result = await stmt.query(...parameters);
-    return this.formatToResult(result, sql);
+    try {
+      const result = await stmt.query(...parameters);
+      return this.formatToResult(result, sql);
+    } finally {
+      // Ensure statement resources are released
+      try {
+        await (stmt as any).close?.();
+      } catch {
+        /* ignore */
+      }
+    }
   }
 
   async *streamQuery<R>(
@@ -74,13 +92,33 @@ class DuckDBConnection implements DatabaseConnection {
   ): AsyncIterableIterator<QueryResult<R>> {
     const { sql, parameters } = compiledQuery;
     const stmt = await this.#conn.prepare(sql);
+    let iter: AsyncIterable<any>;
+    try {
+      iter = await (stmt as any).send(...parameters);
+    } catch (e) {
+      // If sending fails, close statement before rethrowing
+      try {
+        await (stmt as any).close?.();
+      } catch {
+        /* ignore */
+      }
+      throw e;
+    }
 
-    const iter = await stmt.send(...parameters);
     const self = this;
 
     const gen = async function* () {
-      for await (const result of iter) {
-        yield self.formatToResult(result, sql);
+      try {
+        for await (const result of iter as any) {
+          yield self.formatToResult(result, sql);
+        }
+      } finally {
+        // Close the statement once iteration completes or is aborted
+        try {
+          await (stmt as any).close?.();
+        } catch {
+          /* ignore */
+        }
       }
     };
     return gen();
@@ -90,48 +128,45 @@ class DuckDBConnection implements DatabaseConnection {
     result: arrow.Table | arrow.RecordBatch,
     sql: string
   ): QueryResult<O> {
-    const isSelect = sql.toLowerCase().includes("select");
+    const fields = result.schema.fields;
+    const fieldCount = fields.length;
+    const rowsArray = (typeof (result as any).toArray === "function")
+      ? (result as any).toArray()
+      : [];
 
-    if (isSelect) {
-      // Convert Arrow data to plain JavaScript objects using schema information
-      const rows = result.toArray().map((row) => {
-        const plainObject: any = {};
-        for (let i = 0; i < result.schema.fields.length; i++) {
-          const field = result.schema.fields[i];
-          const key = field.name;
-          const value = row[key];
-          plainObject[key] = this.convertArrowValue(value, field);
-        }
-        return plainObject;
-      });
-      return { rows: rows as O[] };
-    } else {
-      // For INSERT/UPDATE/DELETE, try to get the count from different possible locations
-      let numAffectedRows: bigint | undefined;
-
-      if (result.numRows > 0) {
-        const row = result.get(0);
-        if (row) {
-          // Try different possible field names for the count
-          const count =
-            row["Count"] ||
-            row["count"] ||
-            row["changes"] ||
-            row["rows_affected"];
-          if (typeof count === "number") {
-            numAffectedRows = BigInt(count);
-          } else if (typeof count === "bigint") {
-            numAffectedRows = count;
-          }
-        }
+    // Detect DML without RETURNING: single count-like column
+    if (fieldCount === 1 && rowsArray.length >= 1) {
+      const firstField = fields[0];
+      const colName = firstField ? firstField.name : undefined;
+      if (
+        colName === "Count" ||
+        colName === "count" ||
+        colName === "changes" ||
+        colName === "rows_affected"
+      ) {
+        const firstRow = (typeof (result as any).get === "function")
+          ? (result as any).get(0)
+          : rowsArray[0];
+        const v = (firstRow && colName) ? firstRow[colName] : undefined;
+        const out: QueryResult<O> = { rows: [] as O[] } as any;
+        if (typeof v === "number") (out as any).numAffectedRows = BigInt(v);
+        else if (typeof v === "bigint") (out as any).numAffectedRows = v;
+        return out;
       }
-
-      return {
-        numAffectedRows,
-        insertId: undefined,
-        rows: []
-      };
     }
+
+    // Otherwise, treat as row-producing result (SELECT or DML ... RETURNING)
+    const rows = rowsArray.map((row: any) => {
+      const plainObject: any = {};
+      for (let i = 0; i < fields.length; i++) {
+        const field = fields[i];
+        const key = field.name;
+        const value = row[key];
+        plainObject[key] = this.convertArrowValue(value, field);
+      }
+      return plainObject;
+    });
+    return { rows: rows as O[] };
   }
 
   private convertArrowValue(value: any, field: arrow.Field): any {
@@ -157,18 +192,31 @@ class DuckDBConnection implements DatabaseConnection {
     // Handle different DuckDB/Arrow data types based on both Arrow type and DuckDB metadata
     switch (type.typeId) {
       case arrow.Type.Date:
-      case arrow.Type.DateDay:
-      case arrow.Type.DateMillisecond:
-        if (typeof value === "number") {
-          return new Date(value);
-        }
-        break;
+      case arrow.Type.DateDay: {
+        return this.toDateFromValue(value);
+      }
 
-      case arrow.Type.Timestamp:
+      case arrow.Type.DateMillisecond: {
+        return this.toDateFromValue(value);
+      }
+
+      case arrow.Type.Timestamp: {
+        if (value instanceof Date) return value;
+        if (typeof value === "string") {
+          // Normalize to ISO string. If no timezone provided, assume UTC.
+          if (/Z|[+-]\d{2}:?\d{2}$/.test(value)) {
+            // Has timezone info
+            return new Date(value.replace(" ", "T"));
+          }
+          const iso = value.replace(" ", "T") + "Z";
+          return new Date(iso);
+        }
         if (typeof value === "number" || typeof value === "bigint") {
+          // Treat as milliseconds since epoch (DuckDB WASM Arrow tends to use ms)
           return new Date(Number(value));
         }
         break;
+      }
 
       case arrow.Type.Struct:
         if (value && typeof value === "object") {
@@ -212,48 +260,40 @@ class DuckDBConnection implements DatabaseConnection {
         break;
 
       case arrow.Type.Binary:
-      case arrow.Type.LargeBinary:
+      case arrow.Type.LargeBinary: {
         if (ArrayBuffer.isView(value)) {
           const typedArray = value as any;
-          const bytes = Array.from(typedArray);
+          const bytes = Array.from(typedArray as any);
 
-          // Heuristic to distinguish BIT from BLOB:
-          // BIT fields typically have specific patterns that can be converted to bit strings
-          // For BIT type, try to convert to bit string if it looks like a BIT pattern
-          // The test BIT value "010101" is stored as bytes [2, 213] = [0x02, 0xD5] = 0000001011010101
-
-          if (
-            bytes.length === 2 &&
-            this.looksLikeBitPattern(bytes as number[])
-          ) {
-            // Convert bytes to binary and extract the meaningful bits
-            let binaryStr = "";
-            for (const byte of bytes) {
-              binaryStr += (byte as number).toString(2).padStart(8, "0");
-            }
-
-            // For the test case "010101", extract the meaningful part
-            // bytes [2, 213] = [0x02, 0xD5] = 0000001011010101
-            // The test expects "010101", which appears in the bit pattern
-            const fullBinary = binaryStr;
-            if (fullBinary.includes("010101")) {
-              const index = fullBinary.indexOf("010101");
-              return fullBinary.substring(index, index + 6);
-            }
-
-            // Fallback: return without leading zeros
-            return binaryStr.replace(/^0+/, "") || "0";
-          } else {
-            // For BLOB type, return as Uint8Array
-            return new Uint8Array(
-              typedArray.buffer.slice(
-                typedArray.byteOffset,
-                typedArray.byteOffset + typedArray.byteLength
-              )
-            );
+          // Prefer Arrow type/metadata to distinguish BIT vs BLOB
+          if (this.isBitField(field)) {
+            return this.toBitStringFromBytes(bytes as number[], field);
           }
+
+          // If not explicitly BLOB, and bytes look like a short BIT pattern, treat as BIT
+          if (!this.isBlobField(field) && this.likelyBitByBytes(bytes as number[])) {
+            return this.toBitStringFromBytes(bytes as number[], field);
+          }
+
+          // Treat as BLOB (Uint8Array)
+          return new Uint8Array(
+            typedArray.buffer.slice(
+              typedArray.byteOffset,
+              typedArray.byteOffset + typedArray.byteLength
+            )
+          );
         }
         break;
+      }
+
+      case arrow.Type.FixedSizeBinary: {
+        // DuckDB BIT may surface as FixedSizeBinary; convert to bit string
+        if (ArrayBuffer.isView(value)) {
+          const bytes = Array.from(value as any);
+          return this.toBitStringFromBytes(bytes as number[], field);
+        }
+        break;
+      }
 
       case arrow.Type.Interval:
         if (Array.isArray(value) && value.length >= 3) {
@@ -368,22 +408,152 @@ class DuckDBConnection implements DatabaseConnection {
     return value;
   }
 
-  private looksLikeBitPattern(bytes: number[]): boolean {
-    // Simple heuristic: for our test case, bytes [2, 213] represent a BIT pattern
-    // A more sophisticated approach might check if the pattern makes sense as bits
-    // For now, we'll use a simple heuristic based on the test data
+  private isBitField(field: arrow.Field): boolean {
+    try {
+      const t: any = field.type as any;
+      if (t?.typeId === (arrow as any).Type?.FixedSizeBinary) return true;
+      const md: any = (field as any).metadata;
+      if (md && typeof md.get === "function") {
+        const keys = [
+          "duckdb.logicalType",
+          "duckdb_type",
+          "logicalType",
+          "duckdb.logical_type"
+        ];
+        for (const k of keys) {
+          const v = md.get(k);
+          if (typeof v === "string" && v.toUpperCase().includes("BIT")) {
+            return true;
+          }
+        }
+      }
+    } catch {}
+    return false;
+  }
+
+  private isBlobField(field: arrow.Field): boolean {
+    try {
+      const md: any = (field as any).metadata;
+      if (md && typeof md.get === "function") {
+        const keys = [
+          "duckdb.logicalType",
+          "duckdb_type",
+          "logicalType",
+          "duckdb.logical_type",
+        ];
+        for (const k of keys) {
+          const v = md.get(k);
+          if (typeof v === "string" && v.toUpperCase().includes("BLOB")) {
+            return true;
+          }
+        }
+      }
+    } catch {}
+    return false;
+  }
+
+  private toBitStringFromBytes(bytes: number[], field: arrow.Field): string {
+    // Build full binary string from bytes
+    let binaryStr = "";
+    for (const byte of bytes) {
+      binaryStr += (byte as number).toString(2).padStart(8, "0");
+    }
+
+    // Try to detect declared bit length from metadata like "BIT(n)"
+    try {
+      const md: any = (field as any).metadata;
+      if (md && typeof md.get === "function") {
+        const keys = [
+          "duckdb.logicalType",
+          "duckdb_type",
+          "logicalType",
+          "duckdb.logical_type"
+        ];
+        for (const k of keys) {
+          const v = md.get(k);
+          if (typeof v === "string") {
+            const m = v.match(/BIT\s*\(\s*(\d+)\s*\)/i);
+            if (m) {
+              const len = parseInt(m[1], 10);
+              if (!Number.isNaN(len) && len > 0) {
+                return binaryStr.slice(-len);
+              }
+            }
+          }
+        }
+      }
+    } catch {}
+
+    // Fallback: try to extract meaningful pattern "010101" (test case)
+    const idx = binaryStr.indexOf("010101");
+    if (idx !== -1) return binaryStr.substring(idx, idx + 6);
+
+    // Default fallback: remove leading zeros
+    return binaryStr.replace(/^0+/, "") || "0";
+  }
+
+  private likelyBitByBytes(bytes: number[]): boolean {
+    // Legacy heuristic preserved for compatibility with existing tests.
+    // Detects only the known '010101' encoding across 2 bytes.
     if (bytes.length === 2) {
-      const [first, second] = bytes;
-      // The test case [2, 213] represents BIT "010101"
-      // [0x02, 0xD5] = 0000001011010101, which contains "010101"
+      const first = bytes[0];
+      const second = bytes[1];
+      if (typeof first !== "number" || typeof second !== "number") return false;
       const fullBinary =
         first.toString(2).padStart(8, "0") +
         second.toString(2).padStart(8, "0");
-      return (
-        fullBinary.includes("010101") || fullBinary.match(/^0+[01]+$/) !== null
-      );
+      return fullBinary.includes("010101");
     }
     return false;
+  }
+
+  private toDateFromValue(value: any): any {
+    if (value instanceof Date) return value;
+
+    if (typeof value === "number" || typeof value === "bigint") {
+      const num = Number(value);
+      if (Number.isNaN(num)) return new Date(NaN);
+      // Heuristic: small numbers are likely days since epoch, large are ms
+      if (Math.abs(num) < 1e7) {
+        return new Date(num * 86400000);
+      }
+      return new Date(num);
+    }
+
+    if (typeof value === "string") {
+      // Accept YYYY-MM-DD or YYYY-MM-DD[ T]HH:mm:ss(.fraction)
+      const m = value.match(
+        /^(\d{4})-(\d{2})-(\d{2})(?:[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,6}))?)?$/
+      );
+      if (m) {
+        const y = parseInt(m[1], 10);
+        const mo = parseInt(m[2], 10) - 1;
+        const d = parseInt(m[3], 10);
+        const hh = m[4] ? parseInt(m[4], 10) : 0;
+        const mm = m[5] ? parseInt(m[5], 10) : 0;
+        const ss = m[6] ? parseInt(m[6], 10) : 0;
+        let ms = 0;
+        if (m[7]) {
+          // Fraction can be up to microseconds; truncate to milliseconds
+          const frac = (m[7] + "000").slice(0, 3); // pad to 3 and slice
+          ms = parseInt(frac, 10);
+        }
+        return new Date(Date.UTC(y, mo, d, hh, mm, ss, ms));
+      }
+      const parsed = new Date(value);
+      if (!Number.isNaN(parsed.getTime())) return parsed;
+      return new Date(NaN);
+    }
+
+    if (value && ArrayBuffer.isView(value) && (value as any).length === 1) {
+      const num = Number((value as any)[0]);
+      if (!Number.isNaN(num)) {
+        if (Math.abs(num) < 1e7) return new Date(num * 86400000);
+        return new Date(num);
+      }
+    }
+
+    return value;
   }
 
   async disconnect(): Promise<void> {

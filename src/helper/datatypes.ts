@@ -1,6 +1,6 @@
 import { type RawBuilder, sql } from "kysely";
 
-export type DuckDBNodeDataTypes = {
+export type DuckDBWasmDataTypes = {
   BIT: string;
   BLOB: ArrayBufferLike;
   BOOLEAN: boolean;
@@ -43,12 +43,21 @@ export type DuckDBNodeDataTypes = {
 
 // constructors
 export const bit = (value: string): RawBuilder<string> => sql`${value}::BIT`;
-export const blob = (buf: Uint8Array): RawBuilder<ArrayBufferLike> => {
-  const byteStr: string[] = [];
-  for (const [_, c] of buf.entries()) {
-    byteStr.push(`\\x${c.toString(16).padStart(2, "0")}`);
+export const blob = (
+  buf: Uint8Array | ArrayBufferLike | number[]
+): RawBuilder<ArrayBufferLike> => {
+  const u8 = Array.isArray(buf)
+    ? new Uint8Array(buf)
+    : buf instanceof Uint8Array
+    ? buf
+    : new Uint8Array(buf as ArrayBufferLike);
+  // Build DuckDB blob literal string like "\xAA\xBB\xCC" and cast to BLOB.
+  const parts: string[] = [];
+  for (let i = 0; i < u8.length; i++) {
+    parts.push(`\\x${u8[i].toString(16).padStart(2, "0")}`);
   }
-  return sql`${byteStr.join("")}::BLOB`;
+  const hex = parts.join("");
+  return sql`${hex}::BLOB`;
 };
 export const date = (date: Date): RawBuilder<Date> =>
   sql`${date.toISOString().substring(0, 10)}::DATE`;
@@ -59,16 +68,26 @@ export const map = <K, V>(values: [K, V][]): RawBuilder<any> => {
   const toEntry = ([k, v]: [K, V]) => sql`(${k}, ${v})`;
   return sql`map_from_entries([${sql.join(values.map(toEntry))}])`;
 };
+const isRawBuilder = (v: unknown): v is RawBuilder<any> =>
+  !!v && typeof (v as any).toOperationNode === "function";
+
 export const struct = (
-  values: Record<string, RawBuilder<any>>
+  values: Record<string, RawBuilder<any> | unknown>
 ): RawBuilder<any> => {
+  const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
   Object.keys(values).forEach((k) => {
-    if (k.includes("'") || k.includes("{") || k.includes("}")) {
-      throw new Error(`Invalid Struct key found: ${k}`);
+    if (!IDENTIFIER_RE.test(k)) {
+      throw new Error(
+        `Invalid struct key: ${k}. Keys must match ${IDENTIFIER_RE.source}`,
+      );
     }
   });
   return sql`{${sql.join(
-    Object.entries(values).map(([key, value]) => sql`${sql.lit(key)}: ${value}`)
+    Object.entries(values).map(([key, value]) =>
+      isRawBuilder(value)
+        ? sql`${sql.lit(key)}: ${value}`
+        : sql`${sql.lit(key)}: ${sql.val(value)}`
+    )
   )}}`;
 };
 export const timestamp = <T extends Date | string>(value: T): RawBuilder<T> => {

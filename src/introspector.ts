@@ -1,10 +1,15 @@
-import { DEFAULT_MIGRATION_LOCK_TABLE, DEFAULT_MIGRATION_TABLE, Kysely, sql } from "kysely";
+import {
+  DEFAULT_MIGRATION_LOCK_TABLE,
+  DEFAULT_MIGRATION_TABLE,
+  Kysely,
+  sql
+} from "kysely";
 import type {
   DatabaseIntrospector,
   DatabaseMetadata,
   DatabaseMetadataOptions,
   SchemaMetadata,
-  TableMetadata,
+  TableMetadata
 } from "kysely";
 
 export class DuckDbIntrospector implements DatabaseIntrospector {
@@ -15,91 +20,127 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
   }
 
   async getSchemas(): Promise<SchemaMetadata[]> {
-    let rawSchemas = await this.#db
+    const rawSchemas = await this.#db
       .selectFrom("information_schema.schemata")
       .select("schema_name")
       .$castTo<RawSchemaMetadata>()
       .execute();
 
-    return rawSchemas.map((it) => ({ name: it.SCHEMA_NAME }));
+    return rawSchemas.map((it) => ({ name: it.schema_name }));
   }
 
   async getTables(
-    options: DatabaseMetadataOptions = { withInternalKyselyTables: false },
+    options: DatabaseMetadataOptions = { withInternalKyselyTables: false }
   ): Promise<TableMetadata[]> {
     let query = this.#db
       .selectFrom("information_schema.columns as columns")
       .innerJoin("information_schema.tables as tables", (b) =>
         b
-          .onRef("columns.TABLE_CATALOG", "=", "tables.TABLE_CATALOG")
-          .onRef("columns.TABLE_SCHEMA", "=", "tables.TABLE_SCHEMA")
-          .onRef("columns.TABLE_NAME", "=", "tables.TABLE_NAME"))
+          .onRef("columns.table_catalog", "=", "tables.table_catalog")
+          .onRef("columns.table_schema", "=", "tables.table_schema")
+          .onRef("columns.table_name", "=", "tables.table_name")
+      )
       .select([
-        "columns.COLUMN_NAME",
-        "columns.COLUMN_DEFAULT",
-        "columns.TABLE_NAME",
-        "columns.TABLE_SCHEMA",
-        "tables.TABLE_TYPE",
-        "columns.IS_NULLABLE",
-        "columns.DATA_TYPE",
+        "columns.column_name",
+        "columns.column_default",
+        "columns.table_name",
+        "columns.table_schema",
+        "tables.table_type",
+        "columns.is_nullable",
+        "columns.data_type"
       ])
-      .where("columns.TABLE_SCHEMA", "=", sql`current_schema()`)
-      .orderBy("columns.TABLE_NAME")
-      .orderBy("columns.ORDINAL_POSITION")
+      .where("columns.table_schema", "=", sql`current_schema()`)
+      .orderBy("columns.table_name")
+      .orderBy("columns.ordinal_position")
       .$castTo<RawColumnMetadata>();
 
     if (!options.withInternalKyselyTables) {
       query = query
-        .where("columns.TABLE_NAME", "!=", DEFAULT_MIGRATION_TABLE)
-        .where("columns.TABLE_NAME", "!=", DEFAULT_MIGRATION_LOCK_TABLE);
+        .where("columns.table_name", "!=", DEFAULT_MIGRATION_TABLE)
+        .where("columns.table_name", "!=", DEFAULT_MIGRATION_LOCK_TABLE);
     }
 
-    console.log(query.compile());
     const rawColumns = await query.execute();
     return this.#parseTableMetadata(rawColumns);
   }
 
   async getMetadata(
-    options?: DatabaseMetadataOptions,
+    options?: DatabaseMetadataOptions
   ): Promise<DatabaseMetadata> {
     return {
-      tables: await this.getTables(options),
+      tables: await this.getTables(options)
     };
   }
 
   #parseTableMetadata(columns: RawColumnMetadata[]): TableMetadata[] {
-    console.log(columns);
-    return columns.reduce<TableMetadata[]>((tables, it) => {
-      let table = tables.find((tbl) => tbl.name === it.table_name);
+    // Build mutable structures first, then freeze at the end to avoid
+    // mutating frozen objects during construction.
+    const tableMap = new Map<
+      string,
+      {
+        name: string;
+        isView: boolean;
+        schema: string | undefined;
+        columns: Array<{
+          name: string;
+          dataType: string;
+          isNullable: boolean;
+          isAutoIncrementing: boolean;
+          hasDefaultValue: boolean;
+        }>;
+      }
+    >();
 
-      if (!table) {
-        table = Object.freeze({
+    for (const it of columns) {
+      const key = `${it.table_schema}.${it.table_name}`;
+      let tbl = tableMap.get(key);
+      if (!tbl) {
+        tbl = {
           name: it.table_name,
           isView: it.table_type === "view",
           schema: it.table_schema,
-          columns: [],
-        });
-
-        tables.push(table);
+          columns: []
+        };
+        tableMap.set(key, tbl);
       }
 
-      table.columns.push(
-        Object.freeze({
-          name: it.column_name,
-          dataType: it.data_type,
-          isNullable: it.is_nullable === "YES",
-          isAutoIncrementing: false,
-          hasDefaultValue: it.column_default !== null,
-        }),
-      );
+      tbl.columns.push({
+        name: it.column_name,
+        dataType: it.data_type,
+        isNullable: it.is_nullable === "YES",
+        isAutoIncrementing: false,
+        hasDefaultValue: it.column_default !== null
+      });
+    }
 
-      return tables;
-    }, []);
+    // Freeze structures for external consumers.
+    const tables: TableMetadata[] = [];
+    for (const tbl of tableMap.values()) {
+      const frozen = Object.freeze({
+        name: tbl.name,
+        isView: tbl.isView,
+        schema: tbl.schema,
+        columns: Object.freeze(
+          tbl.columns.map((c) =>
+            Object.freeze({
+              name: c.name,
+              dataType: c.dataType,
+              isNullable: c.isNullable,
+              isAutoIncrementing: c.isAutoIncrementing,
+              hasDefaultValue: c.hasDefaultValue
+            })
+          )
+        )
+      });
+      tables.push(frozen as unknown as TableMetadata);
+    }
+
+    return tables;
   }
 }
 
 interface RawSchemaMetadata {
-  SCHEMA_NAME: string;
+  schema_name: string;
 }
 
 interface RawColumnMetadata {
