@@ -12,8 +12,8 @@ const dialect = new DuckDbDialect({
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   database: {} as any,
   tableMappings: {
-    person: "read_json('person.json')",
-  },
+    person: "read_json('person.json')"
+  }
 });
 
 test("tableMappings preserves alias in selectFrom", () => {
@@ -38,4 +38,3 @@ test("tableMappings preserves alias in join", () => {
     "join read_json('person.json') as \"pp\""
   );
 });
-

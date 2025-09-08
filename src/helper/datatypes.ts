@@ -49,8 +49,8 @@ export const blob = (
   const u8 = Array.isArray(buf)
     ? new Uint8Array(buf)
     : buf instanceof Uint8Array
-    ? buf
-    : new Uint8Array(buf as ArrayBufferLike);
+      ? buf
+      : new Uint8Array(buf as ArrayBufferLike);
   // Build DuckDB blob literal string like "\xAA\xBB\xCC" and cast to BLOB.
   const parts: string[] = [];
   for (let i = 0; i < u8.length; i++) {
@@ -78,7 +78,7 @@ export const struct = (
   Object.keys(values).forEach((k) => {
     if (!IDENTIFIER_RE.test(k)) {
       throw new Error(
-        `Invalid struct key: ${k}. Keys must match ${IDENTIFIER_RE.source}`,
+        `Invalid struct key: ${k}. Keys must match ${IDENTIFIER_RE.source}`
       );
     }
   });

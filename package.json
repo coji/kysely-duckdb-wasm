@@ -11,6 +11,8 @@
   "scripts": {
     "test": "vitest",
     "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --sourcemap",
+    "format": "prettier . --check --experimental-cli",
+    "format:fix": "prettier . --write --experimental-cli",
     "check": "tsc --noEmit",
     "docs": "typedoc src/index.ts",
     "all": "npm run check && npm run test && npm run build && npm run docs"
@@ -24,17 +26,19 @@
   "author": "coji",
   "license": "MIT",
   "devDependencies": {
+    "@duckdb/duckdb-wasm": "1.29.1-dev283.0",
     "@types/node": "^24.3.1",
     "@vitest/browser": "3.2.4",
+    "apache-arrow": "17.0.0",
     "dprint": "^0.50.1",
     "playwright": "1.55.0",
+    "prettier": "3.6.2",
+    "prettier-plugin-organize-imports": "4.2.0",
     "rimraf": "^6.0.1",
     "tsup": "^8.5.0",
     "typedoc": "^0.28.12",
     "typescript": "^5.9.2",
-    "vitest": "^3.2.4",
-    "@duckdb/duckdb-wasm": "1.29.1-dev283.0",
-    "apache-arrow": "17.0.0"
+    "vitest": "^3.2.4"
   },
   "peerDependencies": {
     "@duckdb/duckdb-wasm": "*",

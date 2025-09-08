@@ -1,9 +1,8 @@
 import type { SelectQueryBuilder, Simplify } from "kysely";
 import { Kysely, sql } from "kysely";
 
-type CompiledQuerySchema<T> = T extends SelectQueryBuilder<any, any, infer O>
-  ? Simplify<O>
-  : never;
+type CompiledQuerySchema<T> =
+  T extends SelectQueryBuilder<any, any, infer O> ? Simplify<O> : never;
 
 /**
  * @alpha
@@ -41,7 +40,7 @@ export class KyselyDuckDbExtension<DB> extends Kysely<DB> {
       const IDENTIFIER_RE = /^[A-Za-z_][A-Za-z0-9_]*$/;
       if (!IDENTIFIER_RE.test(name)) {
         throw new Error(
-          `Invalid table name: ${name}. Names must match ${IDENTIFIER_RE.source}`,
+          `Invalid table name: ${name}. Names must match ${IDENTIFIER_RE.source}`
         );
       }
 

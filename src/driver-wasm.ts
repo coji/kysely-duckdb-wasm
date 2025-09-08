@@ -130,9 +130,10 @@ class DuckDBConnection implements DatabaseConnection {
   ): QueryResult<O> {
     const fields = result.schema.fields;
     const fieldCount = fields.length;
-    const rowsArray = (typeof (result as any).toArray === "function")
-      ? (result as any).toArray()
-      : [];
+    const rowsArray =
+      typeof (result as any).toArray === "function"
+        ? (result as any).toArray()
+        : [];
 
     // Detect DML without RETURNING: single count-like column
     if (fieldCount === 1 && rowsArray.length >= 1) {
@@ -144,10 +145,11 @@ class DuckDBConnection implements DatabaseConnection {
         colName === "changes" ||
         colName === "rows_affected"
       ) {
-        const firstRow = (typeof (result as any).get === "function")
-          ? (result as any).get(0)
-          : rowsArray[0];
-        const v = (firstRow && colName) ? firstRow[colName] : undefined;
+        const firstRow =
+          typeof (result as any).get === "function"
+            ? (result as any).get(0)
+            : rowsArray[0];
+        const v = firstRow && colName ? firstRow[colName] : undefined;
         const out: QueryResult<O> = { rows: [] as O[] } as any;
         if (typeof v === "number") (out as any).numAffectedRows = BigInt(v);
         else if (typeof v === "bigint") (out as any).numAffectedRows = v;
@@ -271,7 +273,10 @@ class DuckDBConnection implements DatabaseConnection {
           }
 
           // If not explicitly BLOB, and bytes look like a short BIT pattern, treat as BIT
-          if (!this.isBlobField(field) && this.likelyBitByBytes(bytes as number[])) {
+          if (
+            !this.isBlobField(field) &&
+            this.likelyBitByBytes(bytes as number[])
+          ) {
             return this.toBitStringFromBytes(bytes as number[], field);
           }
 
@@ -439,7 +444,7 @@ class DuckDBConnection implements DatabaseConnection {
           "duckdb.logicalType",
           "duckdb_type",
           "logicalType",
-          "duckdb.logical_type",
+          "duckdb.logical_type"
         ];
         for (const k of keys) {
           const v = md.get(k);
