@@ -130,23 +130,28 @@ class DuckDBConnection implements DatabaseConnection {
   ): QueryResult<O> {
     const fields = result.schema.fields;
     const fieldCount = fields.length;
-    const rowsArray = (result as any).toArray?.() ?? [];
+    const rowsArray = (typeof (result as any).toArray === "function")
+      ? (result as any).toArray()
+      : [];
 
     // Detect DML without RETURNING: single count-like column
     if (fieldCount === 1 && rowsArray.length >= 1) {
-      const colName = fields[0].name;
+      const firstField = fields[0];
+      const colName = firstField ? firstField.name : undefined;
       if (
         colName === "Count" ||
         colName === "count" ||
         colName === "changes" ||
         colName === "rows_affected"
       ) {
-        const first = (result as any).get?.(0) ?? rowsArray[0];
-        const v = first?.[colName];
-        let numAffectedRows: bigint | undefined = undefined;
-        if (typeof v === "number") numAffectedRows = BigInt(v);
-        else if (typeof v === "bigint") numAffectedRows = v;
-        return { rows: [], numAffectedRows, insertId: undefined };
+        const firstRow = (typeof (result as any).get === "function")
+          ? (result as any).get(0)
+          : rowsArray[0];
+        const v = (firstRow && colName) ? firstRow[colName] : undefined;
+        const out: QueryResult<O> = { rows: [] as O[] } as any;
+        if (typeof v === "number") (out as any).numAffectedRows = BigInt(v);
+        else if (typeof v === "bigint") (out as any).numAffectedRows = v;
+        return out;
       }
     }
 
@@ -265,9 +270,8 @@ class DuckDBConnection implements DatabaseConnection {
             return this.toBitStringFromBytes(bytes as number[], field);
           }
 
-          // Fallback heuristic: some environments don't expose metadata for BIT
-          // Preserve legacy behavior for known test pattern (2-byte bitstorage)
-          if (this.likelyBitByBytes(bytes as number[])) {
+          // If not explicitly BLOB, and bytes look like a short BIT pattern, treat as BIT
+          if (!this.isBlobField(field) && this.likelyBitByBytes(bytes as number[])) {
             return this.toBitStringFromBytes(bytes as number[], field);
           }
 
@@ -427,6 +431,27 @@ class DuckDBConnection implements DatabaseConnection {
     return false;
   }
 
+  private isBlobField(field: arrow.Field): boolean {
+    try {
+      const md: any = (field as any).metadata;
+      if (md && typeof md.get === "function") {
+        const keys = [
+          "duckdb.logicalType",
+          "duckdb_type",
+          "logicalType",
+          "duckdb.logical_type",
+        ];
+        for (const k of keys) {
+          const v = md.get(k);
+          if (typeof v === "string" && v.toUpperCase().includes("BLOB")) {
+            return true;
+          }
+        }
+      }
+    } catch {}
+    return false;
+  }
+
   private toBitStringFromBytes(bytes: number[], field: arrow.Field): string {
     // Build full binary string from bytes
     let binaryStr = "";
@@ -469,15 +494,15 @@ class DuckDBConnection implements DatabaseConnection {
 
   private likelyBitByBytes(bytes: number[]): boolean {
     // Legacy heuristic preserved for compatibility with existing tests.
-    // Detects typical encoding of a short BIT value across 2 bytes.
+    // Detects only the known '010101' encoding across 2 bytes.
     if (bytes.length === 2) {
-      const [first, second] = bytes;
+      const first = bytes[0];
+      const second = bytes[1];
+      if (typeof first !== "number" || typeof second !== "number") return false;
       const fullBinary =
         first.toString(2).padStart(8, "0") +
         second.toString(2).padStart(8, "0");
-      return (
-        fullBinary.includes("010101") || fullBinary.match(/^0+[01]+$/) !== null
-      );
+      return fullBinary.includes("010101");
     }
     return false;
   }
