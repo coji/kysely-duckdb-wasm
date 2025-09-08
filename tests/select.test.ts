@@ -1,4 +1,4 @@
-import { sql } from "kysely";
+import { CompiledQuery, sql } from "kysely";
 import { expect, test } from "vitest";
 import * as types from "../src/helper/datatypes";
 import { setupDb } from "./test_common";
@@ -55,4 +55,24 @@ test("select complex data types with where", async () => {
     .where("tsz", "=", types.timestamptz("1992-09-20 11:30:00.123+03:00"))
     .execute();
   expect(results.length).toBe(1);
+});
+
+test("BIT literal conversion returns bit string", async () => {
+  const kysely = await setupDb();
+
+  const r = await kysely.executeQuery(
+    CompiledQuery.raw("SELECT '010101'::BIT AS b;")
+  );
+  expect(r.rows.length).toBe(1);
+  expect(r.rows[0]["b"]).toEqual("010101");
+});
+
+test("BLOB literal conversion returns Uint8Array", async () => {
+  const kysely = await setupDb();
+
+  const r = await kysely.executeQuery(
+    CompiledQuery.raw("SELECT '\\xAA\\xBB\\xCC'::BLOB AS b;")
+  );
+  expect(r.rows.length).toBe(1);
+  expect(r.rows[0]["b"]).toEqual(new Uint8Array([0xAA, 0xBB, 0xCC]));
 });

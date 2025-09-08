@@ -78,3 +78,22 @@ test("insert returning rows", async () => {
   const all = await kysely.selectFrom("t1").selectAll().execute();
   expect(all.find((r) => r.a === 20 && r.b === 21)).toBeTruthy();
 });
+
+test("BLOB roundtrip multi-byte and filtering", async () => {
+  const kysely = await setupDb();
+
+  const bytes = new Uint8Array([0x01, 0x00, 0xAA, 0xFF]);
+  await kysely
+    .insertInto("t2")
+    .values({ bl: types.blob(bytes) })
+    .execute();
+
+  const selected = await kysely
+    .selectFrom("t2")
+    .select(["bl"]) 
+    .where("bl", "=", types.blob(bytes))
+    .execute();
+
+  expect(selected.length).toBe(1);
+  expect(selected[0].bl).toEqual(bytes);
+});
