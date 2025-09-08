@@ -43,12 +43,21 @@ export type DuckDBNodeDataTypes = {
 
 // constructors
 export const bit = (value: string): RawBuilder<string> => sql`${value}::BIT`;
-export const blob = (buf: Uint8Array): RawBuilder<ArrayBufferLike> => {
-  const byteStr: string[] = [];
-  for (const [_, c] of buf.entries()) {
-    byteStr.push(`\\x${c.toString(16).padStart(2, "0")}`);
+export const blob = (
+  buf: Uint8Array | ArrayBufferLike | number[]
+): RawBuilder<ArrayBufferLike> => {
+  const u8 = Array.isArray(buf)
+    ? new Uint8Array(buf)
+    : buf instanceof Uint8Array
+      ? buf
+      : new Uint8Array(buf as ArrayBufferLike);
+  // Build DuckDB blob literal string like "\xAA\xBB\xCC" and cast to BLOB.
+  const parts: string[] = [];
+  for (let i = 0; i < u8.length; i++) {
+    parts.push(`\\x${u8[i].toString(16).padStart(2, "0")}`);
   }
-  return sql`${byteStr.join("")}::BLOB`;
+  const hex = parts.join("");
+  return sql`${hex}::BLOB`;
 };
 export const date = (date: Date): RawBuilder<Date> =>
   sql`${date.toISOString().substring(0, 10)}::DATE`;

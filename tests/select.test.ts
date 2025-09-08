@@ -68,6 +68,19 @@ test("select struct with plain values in where", async () => {
   expect(results.length).toBe(1);
 });
 
+test("BLOB helper accepts number[]", async () => {
+  const kysely = await setupDb();
+
+  const results = await kysely
+    .selectFrom("t2")
+    .select(["bl"]) 
+    .where("bl", "=", types.blob([0xAA]))
+    .execute();
+
+  expect(results.length).toBe(1);
+  expect(results[0].bl).toEqual(new Uint8Array([0xAA]));
+});
+
 test("BIT literal conversion returns bit string", async () => {
   const kysely = await setupDb();
 
