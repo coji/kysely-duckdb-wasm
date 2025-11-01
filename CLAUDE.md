@@ -28,6 +28,84 @@ pnpm run all
 pnpm run docs
 ```
 
+## Release & Publishing
+
+This project uses **release-please** for automated versioning and npm publishing.
+
+### Commit Message Convention
+
+**IMPORTANT**: Always use Conventional Commits format for commit messages:
+
+```bash
+# Feature (minor version bump: 0.2.0 → 0.3.0)
+feat: add new DuckDB helper functions
+
+# Bug fix (patch version bump: 0.2.0 → 0.2.1)
+fix: correct type inference for struct fields
+
+# Breaking change (major version bump: 0.2.0 → 1.0.0)
+feat!: remove deprecated API methods
+
+# Other types (no version bump, but included in changelog)
+chore: update dependencies
+docs: improve API documentation
+test: add integration tests
+refactor: simplify driver connection logic
+```
+
+### Release Workflow
+
+1. **Develop**: Make changes and commit using Conventional Commits
+2. **Merge to main**: release-please automatically creates a Release PR
+3. **Review Release PR**: Check version bump and CHANGELOG.md
+4. **Merge Release PR**: Triggers automatic:
+   - GitHub Release creation
+   - npm publish with OIDC provenance (no secrets required)
+   - Documentation deployment to GitHub Pages
+
+### Manual Release (if needed)
+
+```bash
+# Update version manually
+pnpm version patch|minor|major
+
+# Build and validate
+pnpm run validate
+
+# Publish to npm (requires npm login)
+npm publish --provenance --access public
+```
+
+### npm Trusted Publishing (OIDC)
+
+This package uses npm trusted publishing with OIDC for secure, transparent publishing:
+
+- No `NPM_TOKEN` secrets required
+- Cryptographic proof of package origin
+- Verifiable build attestation on npm package page
+- Provenance is automatically enabled (no `--provenance` flag needed)
+
+#### Setup Requirements
+
+**npm Package Configuration** (one-time setup):
+
+1. Visit https://www.npmjs.com/package/@coji/kysely-duckdb-wasm/access
+2. Navigate to **Publishing Access** settings
+3. Click **Add Trusted Publisher**
+4. Configure:
+   - **Provider**: GitHub Actions
+   - **Organization/User**: `coji`
+   - **Repository**: `kysely-duckdb-wasm`
+   - **Workflow filename**: `release-please.yml`
+   - **Environment**: (leave empty)
+5. Save the configuration
+
+**Technical Requirements**:
+
+- npm CLI v11.5.1 or later (automatically installed in CI)
+- `id-token: write` permission in GitHub Actions
+- GitHub-hosted runner (not self-hosted)
+
 ## Architecture
 
 The codebase follows the Kysely dialect pattern with four main components:
