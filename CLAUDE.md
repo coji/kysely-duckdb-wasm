@@ -79,6 +79,7 @@ npm publish --provenance --access public
 ### npm Trusted Publishing (OIDC)
 
 This package uses npm trusted publishing with OIDC for secure, transparent publishing:
+
 - No `NPM_TOKEN` secrets required
 - Cryptographic proof of package origin
 - Verifiable build attestation on npm package page
@@ -87,6 +88,7 @@ This package uses npm trusted publishing with OIDC for secure, transparent publi
 #### Setup Requirements
 
 **npm Package Configuration** (one-time setup):
+
 1. Visit https://www.npmjs.com/package/@coji/kysely-duckdb-wasm/access
 2. Navigate to **Publishing Access** settings
 3. Click **Add Trusted Publisher**
@@ -99,6 +101,7 @@ This package uses npm trusted publishing with OIDC for secure, transparent publi
 5. Save the configuration
 
 **Technical Requirements**:
+
 - npm CLI v11.5.1 or later (automatically installed in CI)
 - `id-token: write` permission in GitHub Actions
 - GitHub-hosted runner (not self-hosted)
