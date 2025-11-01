@@ -56,9 +56,14 @@ refactor: simplify driver connection logic
 ### Release Workflow
 
 1. **Develop**: Make changes and commit using Conventional Commits
-2. **Merge to main**: release-please automatically creates a Release PR
-3. **Review Release PR**: Check version bump and CHANGELOG.md
-4. **Merge Release PR**: Triggers automatic:
+2. **Create Pull Request**: Open a PR to merge your changes
+3. **Merge PR using "Create a merge commit"**:
+   - **IMPORTANT**: Use "Create a merge commit" (not squash merge)
+   - This prevents duplicate entries in CHANGELOG
+   - Repository is configured to only allow merge commits
+4. **release-please creates Release PR**: Automatically created after merge to main
+5. **Review Release PR**: Check version bump and CHANGELOG.md
+6. **Merge Release PR**: Triggers automatic:
    - GitHub Release creation
    - npm publish with OIDC provenance (no secrets required)
    - Documentation deployment to GitHub Pages
