@@ -1,3 +1,4 @@
+import { playwright } from '@vitest/browser-playwright'
 import { defineConfig } from 'vitest/config'
 
 export default defineConfig({
@@ -10,7 +11,7 @@ export default defineConfig({
           headless: true,
         },
       ],
-      provider: 'playwright',
+      provider: playwright(),
     },
   },
   optimizeDeps: {

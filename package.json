@@ -28,24 +28,38 @@
   ],
   "author": "coji",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/coji/kysely-duckdb-wasm.git"
+  },
+  "homepage": "https://github.com/coji/kysely-duckdb-wasm#readme",
+  "bugs": {
+    "url": "https://github.com/coji/kysely-duckdb-wasm/issues"
+  },
   "devDependencies": {
-    "@biomejs/biome": "2.2.3",
-    "@duckdb/duckdb-wasm": "1.29.1-dev283.0",
-    "@types/node": "^24.3.1",
-    "@vitest/browser": "3.2.4",
-    "apache-arrow": "17.0.0",
-    "playwright": "1.55.0",
+    "@biomejs/biome": "2.3.2",
+    "@duckdb/duckdb-wasm": "1.31.0",
+    "@types/node": "^24.9.2",
+    "@vitest/browser": "4.0.6",
+    "@vitest/browser-playwright": "4.0.6",
+    "apache-arrow": "21.1.0",
+    "playwright": "1.56.1",
     "prettier": "3.6.2",
-    "prettier-plugin-organize-imports": "4.2.0",
-    "rimraf": "^6.0.1",
+    "prettier-plugin-organize-imports": "4.3.0",
+    "rimraf": "^6.1.0",
     "tsup": "^8.5.0",
-    "typedoc": "^0.28.12",
-    "typescript": "^5.9.2",
-    "vitest": "^3.2.4"
+    "typedoc": "^0.28.14",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.6"
   },
   "peerDependencies": {
     "@duckdb/duckdb-wasm": "*",
     "apache-arrow": "*",
     "kysely": "^0.28"
+  },
+  "pnpm": {
+    "overrides": {
+      "apache-arrow": "21.1.0"
+    }
   }
 }
