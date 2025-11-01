@@ -51,8 +51,11 @@ jobs:
       - name: Run validation
         run: pnpm run validate
 
-      - name: Publish to NPM with provenance
-        run: npm publish --provenance --access public
+      - name: Upgrade npm for trusted publishing
+        run: npm install -g npm@latest
+
+      - name: Publish to NPM with trusted publishing
+        run: npm publish --access public
 
       - name: Upload docs artifact
         uses: actions/upload-pages-artifact@v3

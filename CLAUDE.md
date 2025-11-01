@@ -76,12 +76,32 @@ pnpm run validate
 npm publish --provenance --access public
 ```
 
-### npm Provenance
+### npm Trusted Publishing (OIDC)
 
-This package uses npm provenance with OIDC for secure, transparent publishing:
+This package uses npm trusted publishing with OIDC for secure, transparent publishing:
 - No `NPM_TOKEN` secrets required
 - Cryptographic proof of package origin
 - Verifiable build attestation on npm package page
+- Provenance is automatically enabled (no `--provenance` flag needed)
+
+#### Setup Requirements
+
+**npm Package Configuration** (one-time setup):
+1. Visit https://www.npmjs.com/package/@coji/kysely-duckdb-wasm/access
+2. Navigate to **Publishing Access** settings
+3. Click **Add Trusted Publisher**
+4. Configure:
+   - **Provider**: GitHub Actions
+   - **Organization/User**: `coji`
+   - **Repository**: `kysely-duckdb-wasm`
+   - **Workflow filename**: `release-please.yml`
+   - **Environment**: (leave empty)
+5. Save the configuration
+
+**Technical Requirements**:
+- npm CLI v11.5.1 or later (automatically installed in CI)
+- `id-token: write` permission in GitHub Actions
+- GitHub-hosted runner (not self-hosted)
 
 ## Architecture
 
