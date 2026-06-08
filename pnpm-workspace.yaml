@@ -1,2 +1,11 @@
 allowBuilds:
   esbuild: true
+
+overrides:
+  # Security: force a non-vulnerable vite (transitive via vitest). The locked
+  # 7.1.x was vulnerable to GHSA-p9ff-h696-f583 / GHSA-v2wj-q39q-566r /
+  # GHSA-4w7w-66w2-5vf9; vitest 4.1.8 allows `^6 || ^7 || ^8`, so pin to the
+  # current major (8.x), which is past the vulnerable range. pnpm won't move a
+  # transitive-only dep across majors on its own, hence the override.
+  # rollup/postcss/picomatch were patched naturally via `pnpm update`.
+  vite: '^8.0.0'
