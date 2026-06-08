@@ -1,16 +1,17 @@
 import type {
   DatabaseIntrospector,
-  DatabaseMetadata,
   DatabaseMetadataOptions,
   SchemaMetadata,
   TableMetadata,
 } from 'kysely'
-import {
-  DEFAULT_MIGRATION_LOCK_TABLE,
-  DEFAULT_MIGRATION_TABLE,
-  type Kysely,
-  sql,
-} from 'kysely'
+import { type Kysely, sql } from 'kysely'
+
+// kysely's internal migration table names. These used to be re-exported from the
+// package root, but kysely 0.29 moved them to the `kysely/migration` subpath
+// (which doesn't exist in 0.28). Inlining the documented default names keeps this
+// introspector compatible across both kysely 0.28 and 0.29.
+const DEFAULT_MIGRATION_TABLE = 'kysely_migration'
+const DEFAULT_MIGRATION_LOCK_TABLE = 'kysely_migration_lock'
 
 export class DuckDbIntrospector implements DatabaseIntrospector {
   readonly #db: Kysely<any>
@@ -64,9 +65,13 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
     return this.#parseTableMetadata(rawColumns)
   }
 
+  // `DatabaseMetadata` and the `getMetadata()` method were removed from kysely's
+  // `DatabaseIntrospector` interface in 0.29 (deprecated since 0.28). It is kept
+  // here for backward compatibility with kysely 0.28 consumers, with an inline
+  // return type so it compiles against both versions.
   async getMetadata(
     options?: DatabaseMetadataOptions,
-  ): Promise<DatabaseMetadata> {
+  ): Promise<{ tables: TableMetadata[] }> {
     return {
       tables: await this.getTables(options),
     }
@@ -119,6 +124,9 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
       const frozen = Object.freeze({
         name: tbl.name,
         isView: tbl.isView,
+        // `isForeign` is a required field on kysely 0.29's TableMetadata. DuckDB
+        // exposes no foreign-table concept here, so it is always false.
+        isForeign: false,
         schema: tbl.schema,
         columns: Object.freeze(
           tbl.columns.map((c) =>

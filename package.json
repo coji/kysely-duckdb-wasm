@@ -8,6 +8,10 @@
     "import": "./dist/index.js"
   },
   "type": "module",
+  "packageManager": "pnpm@11.5.2",
+  "engines": {
+    "node": ">=24"
+  },
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
@@ -41,29 +45,25 @@
     "provenance": true
   },
   "devDependencies": {
-    "@biomejs/biome": "2.3.2",
-    "@duckdb/duckdb-wasm": "1.31.0",
-    "@types/node": "^24.9.2",
-    "@vitest/browser": "4.0.6",
-    "@vitest/browser-playwright": "4.0.6",
+    "@biomejs/biome": "2.4.16",
+    "@duckdb/duckdb-wasm": "1.32.0",
+    "@types/node": "^24.13.1",
+    "@vitest/browser": "4.1.8",
+    "@vitest/browser-playwright": "4.1.8",
     "apache-arrow": "21.1.0",
-    "playwright": "1.56.1",
-    "prettier": "3.6.2",
+    "kysely": "^0.29.2",
+    "playwright": "1.60.0",
+    "prettier": "3.8.3",
     "prettier-plugin-organize-imports": "4.3.0",
-    "rimraf": "^6.1.0",
-    "tsup": "^8.5.0",
-    "typedoc": "^0.28.14",
-    "typescript": "^5.9.3",
-    "vitest": "^4.0.6"
+    "rimraf": "^6.1.3",
+    "tsup": "^8.5.1",
+    "typedoc": "^0.28.19",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
   },
   "peerDependencies": {
     "@duckdb/duckdb-wasm": "*",
     "apache-arrow": "*",
-    "kysely": "^0.28"
-  },
-  "pnpm": {
-    "overrides": {
-      "apache-arrow": "21.1.0"
-    }
+    "kysely": "^0.28 || ^0.29"
   }
 }

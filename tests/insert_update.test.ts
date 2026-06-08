@@ -124,7 +124,23 @@ test('BLOB roundtrip multi-byte and filtering', async () => {
   const bytes = new Uint8Array([0x01, 0x00, 0xaa, 0xff])
   await kysely
     .insertInto('t2')
-    .values({ bl: types.blob(bytes) })
+    .values({
+      int_list: types.list([3, 4, 5]),
+      string_list: types.list(['d', 'e', 'f']),
+      m: types.map([
+        [1, 2],
+        [3, 4],
+      ]),
+      st: types.struct({ x: sql`${1}`, y: sql`${'aaa'}` }),
+      bs: types.bit('010101'),
+      bl: types.blob(bytes),
+      bool: true,
+      dt: types.date(new Date()),
+      ts: types.timestamp(new Date()),
+      tsz: types.timestamptz(`${new Date().toISOString().slice(0, -1)}+03:00`),
+      enm: 'sad',
+      delta: sql`INTERVAL 1 YEAR`,
+    })
     .execute()
 
   const selected = await kysely

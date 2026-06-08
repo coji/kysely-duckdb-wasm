@@ -3,6 +3,9 @@
   "compilerOptions": {
     "rootDir": ".",
     "outDir": "./dist",
+    // tsup's .d.ts build injects the now-deprecated `baseUrl` option. Silence the
+    // TypeScript 6.0 deprecation error (option is removed in 7.0) during the build.
+    "ignoreDeprecations": "6.0",
     "target": "ESNext",
     "module": "ESNext",
     "moduleResolution": "Bundler",

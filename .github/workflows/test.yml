@@ -10,22 +10,21 @@ on:
 jobs:
   checks:
     name: ${{ matrix.task }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         task: [format, lint, typecheck, test, build, docs]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         with:
-          version: 10
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version-file: '.node-version'
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
@@ -33,7 +32,7 @@ jobs:
       # Cache Playwright browser downloads to speed up test job
       - name: Cache Playwright browsers
         if: matrix.task == 'test'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
