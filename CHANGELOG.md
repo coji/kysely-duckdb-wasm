@@ -6,7 +6,6 @@
 ### Features
 
 * modernize toolchain (Node 24, pnpm 11) and support kysely 0.29 ([6bad003](https://github.com/coji/kysely-duckdb-wasm/commit/6bad0036c0698afa7214bbf0ec3c14f415fca4a4))
-* modernize toolchain (Node 24, pnpm 11) and support kysely 0.29 ([6258977](https://github.com/coji/kysely-duckdb-wasm/commit/62589775ce3d9f1a647ce8a199c65cdd02b65f8f))
 
 
 ### Bug Fixes
