@@ -10,22 +10,23 @@ on:
 jobs:
   checks:
     name: ${{ matrix.task }}
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
         task: [format, lint, typecheck, test, build, docs]
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v6
         with:
-          version: 10
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version-file: '.node-version'
           cache: 'pnpm'
 
       - run: pnpm install --frozen-lockfile
@@ -33,7 +34,7 @@ jobs:
       # Cache Playwright browser downloads to speed up test job
       - name: Cache Playwright browsers
         if: matrix.task == 'test'
-        uses: actions/cache@v4
+        uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
@@ -54,3 +55,47 @@ jobs:
             build) pnpm run build ;;
             docs) pnpm run docs ;;
           esac
+
+  # Verify both ends of the declared kysely peer range (^0.28 || ^0.29).
+  kysely-compat:
+    name: kysely ${{ matrix.kysely }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        kysely: ['0.28', '0.29']
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version-file: '.node-version'
+          cache: 'pnpm'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Pin kysely ${{ matrix.kysely }}
+        run: pnpm add -D "kysely@^${{ matrix.kysely }}"
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium
+
+      - name: Typecheck against kysely ${{ matrix.kysely }}
+        run: pnpm run typecheck
+
+      - name: Test against kysely ${{ matrix.kysely }}
+        run: pnpm run test:run

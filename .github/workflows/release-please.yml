@@ -17,7 +17,7 @@ jobs:
     outputs:
       release_created: ${{ steps.release.outputs.release_created }}
     steps:
-      - uses: googleapis/release-please-action@v4
+      - uses: googleapis/release-please-action@v5
         id: release
 
   publish:
@@ -29,16 +29,17 @@ jobs:
       id-token: write
       pages: write
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
+      - uses: actions/checkout@v6
         with:
-          version: 10
+          persist-credentials: false
+
+      - uses: pnpm/action-setup@v6
+        with:
           run_install: false
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
-          node-version: '22'
+          node-version-file: '.node-version'
           registry-url: 'https://registry.npmjs.org'
           cache: 'pnpm'
 
@@ -58,9 +59,12 @@ jobs:
         run: npm publish --access public
 
       - name: Upload docs artifact
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: docs
+          # typedoc emits docs/.nojekyll; upload-pages-artifact excludes dotfiles
+          # by default since v4, so opt back in to keep it in the artifact.
+          include-hidden-files: true
 
   deploy-pages:
     needs: publish
@@ -74,4 +78,4 @@ jobs:
     steps:
       - name: Deploy to GitHub Pages
         id: deployment
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5

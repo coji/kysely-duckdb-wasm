@@ -94,7 +94,7 @@ test('BLOB helper accepts number[]', async () => {
 test('BIT literal conversion returns bit string', async () => {
   const kysely = await setupDb()
 
-  const r = await kysely.executeQuery(
+  const r = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw("SELECT '010101'::BIT AS b;"),
   )
   expect(r.rows.length).toBe(1)
@@ -104,7 +104,7 @@ test('BIT literal conversion returns bit string', async () => {
 test('BLOB literal conversion returns Uint8Array', async () => {
   const kysely = await setupDb()
 
-  const r = await kysely.executeQuery(
+  const r = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw("SELECT '\\xAA\\xBB\\xCC'::BLOB AS b;"),
   )
   expect(r.rows.length).toBe(1)
@@ -114,13 +114,13 @@ test('BLOB literal conversion returns Uint8Array', async () => {
 test('BLOB leading zero bytes preserved', async () => {
   const kysely = await setupDb()
 
-  const r1 = await kysely.executeQuery(
+  const r1 = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw("SELECT '\\x00'::BLOB AS b;"),
   )
   expect(r1.rows.length).toBe(1)
   expect(r1.rows[0]['b']).toEqual(new Uint8Array([0x00]))
 
-  const r2 = await kysely.executeQuery(
+  const r2 = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw("SELECT '\\x00\\x0A'::BLOB AS b;"),
   )
   expect(r2.rows.length).toBe(1)
@@ -165,7 +165,7 @@ test("BIT literal variations convert to bit strings", async () => {
 test('MAP literal conversion formats as key=value pairs', async () => {
   const kysely = await setupDb()
 
-  const r = await kysely.executeQuery(
+  const r = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw("SELECT map {'x': 'y', 'z': 'w'} AS m;"),
   )
   expect(r.rows.length).toBe(1)
@@ -175,7 +175,7 @@ test('MAP literal conversion formats as key=value pairs', async () => {
 test('TIMESTAMP microseconds are truncated to milliseconds', async () => {
   const kysely = await setupDb()
 
-  const r = await kysely.executeQuery(
+  const r = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw("SELECT TIMESTAMP '1970-01-01 00:00:00.001234' AS t;"),
   )
   expect(r.rows.length).toBe(1)
@@ -185,7 +185,7 @@ test('TIMESTAMP microseconds are truncated to milliseconds', async () => {
 test('TIMESTAMPTZ with offset converts to UTC', async () => {
   const kysely = await setupDb()
 
-  const r = await kysely.executeQuery(
+  const r = await kysely.executeQuery<Record<string, unknown>>(
     CompiledQuery.raw(
       "SELECT TIMESTAMPTZ '1992-09-20 11:30:00.123+03:00' AS t;",
     ),
