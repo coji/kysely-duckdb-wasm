@@ -120,32 +120,32 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
       })
     }
 
-    // Freeze structures for external consumers.
+    // Freeze structures for external consumers. `isForeign` is required on
+    // kysely 0.29's TableMetadata but absent in 0.28; intersecting with an
+    // optional `isForeign` lets the literal satisfy both versions while still
+    // type-checking every other field, so a future required field is caught
+    // at build time instead of silently going missing.
+    type CompatTableMetadata = TableMetadata & { isForeign?: boolean }
     const tables: TableMetadata[] = []
     for (const tbl of tableMap.values()) {
-      const frozen = Object.freeze({
+      const table: CompatTableMetadata = {
         name: tbl.name,
         isView: tbl.isView,
-        // `isForeign` is required on kysely 0.29's TableMetadata but absent in
-        // 0.28. DuckDB has no foreign-table concept, so it is always false. The
-        // object is cast (via unknown) because the required field set differs
-        // across the supported kysely versions, so a directly-typed literal
-        // cannot satisfy both 0.28 and 0.29 at once.
+        // DuckDB exposes no foreign-table concept here, so this is always false.
         isForeign: false,
         schema: tbl.schema,
-        columns: Object.freeze(
-          tbl.columns.map((c) =>
-            Object.freeze({
-              name: c.name,
-              dataType: c.dataType,
-              isNullable: c.isNullable,
-              isAutoIncrementing: c.isAutoIncrementing,
-              hasDefaultValue: c.hasDefaultValue,
-            }),
-          ),
+        columns: tbl.columns.map((c) =>
+          Object.freeze({
+            name: c.name,
+            dataType: c.dataType,
+            isNullable: c.isNullable,
+            isAutoIncrementing: c.isAutoIncrementing,
+            hasDefaultValue: c.hasDefaultValue,
+          }),
         ),
-      })
-      tables.push(frozen as unknown as TableMetadata)
+      }
+      Object.freeze(table.columns)
+      tables.push(Object.freeze(table) as TableMetadata)
     }
 
     return tables

@@ -84,5 +84,6 @@ test('introspector: getTables flags views with isView=true', async () => {
   expect(v1).toBeTruthy()
   expect(v1!.isView).toBe(true)
   // sanity check: a base table is still reported as not a view
+  expect(t1).toBeTruthy()
   expect(t1!.isView).toBe(false)
 })

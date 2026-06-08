@@ -17,6 +17,8 @@ jobs:
         task: [format, lint, typecheck, test, build, docs]
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
@@ -64,6 +66,8 @@ jobs:
         kysely: ['0.28', '0.29']
     steps:
       - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
 
       - uses: pnpm/action-setup@v6
         with:
