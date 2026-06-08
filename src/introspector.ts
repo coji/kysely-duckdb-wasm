@@ -102,7 +102,9 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
       if (!tbl) {
         tbl = {
           name: it.table_name,
-          isView: it.table_type === 'view',
+          // DuckDB's information_schema reports table_type as 'BASE TABLE' / 'VIEW'
+          // (uppercase), so compare case-insensitively.
+          isView: it.table_type?.toLowerCase() === 'view',
           schema: it.table_schema,
           columns: [],
         }
@@ -124,8 +126,11 @@ export class DuckDbIntrospector implements DatabaseIntrospector {
       const frozen = Object.freeze({
         name: tbl.name,
         isView: tbl.isView,
-        // `isForeign` is a required field on kysely 0.29's TableMetadata. DuckDB
-        // exposes no foreign-table concept here, so it is always false.
+        // `isForeign` is required on kysely 0.29's TableMetadata but absent in
+        // 0.28. DuckDB has no foreign-table concept, so it is always false. The
+        // object is cast (via unknown) because the required field set differs
+        // across the supported kysely versions, so a directly-typed literal
+        // cannot satisfy both 0.28 and 0.29 at once.
         isForeign: false,
         schema: tbl.schema,
         columns: Object.freeze(

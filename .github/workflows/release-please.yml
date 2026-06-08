@@ -60,6 +60,9 @@ jobs:
         uses: actions/upload-pages-artifact@v5
         with:
           path: docs
+          # typedoc emits docs/.nojekyll; upload-pages-artifact excludes dotfiles
+          # by default since v4, so opt back in to keep it in the artifact.
+          include-hidden-files: true
 
   deploy-pages:
     needs: publish

@@ -1,10 +1,2 @@
 allowBuilds:
   esbuild: true
-
-onlyBuiltDependencies:
-  - dprint
-  - duckdb
-  - esbuild
-
-overrides:
-  apache-arrow: 21.1.0

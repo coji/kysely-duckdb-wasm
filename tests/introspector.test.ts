@@ -68,3 +68,21 @@ test('introspector: getMetadata aggregates tables', async () => {
   expect(md.tables.length).toBeGreaterThanOrEqual(2)
   expect(md.tables.some((t) => t.name === 't1')).toBe(true)
 })
+
+test('introspector: getTables flags views with isView=true', async () => {
+  const db = await setupDb()
+  await db.executeQuery(
+    CompiledQuery.raw('CREATE VIEW v1 AS SELECT a, b FROM t1;'),
+  )
+  const introspector = new DuckDbIntrospector(db)
+
+  const tables = await introspector.getTables()
+
+  const v1 = tables.find((t) => t.name === 'v1')
+  const t1 = tables.find((t) => t.name === 't1')
+
+  expect(v1).toBeTruthy()
+  expect(v1!.isView).toBe(true)
+  // sanity check: a base table is still reported as not a view
+  expect(t1!.isView).toBe(false)
+})

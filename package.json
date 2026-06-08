@@ -10,12 +10,12 @@
   "type": "module",
   "packageManager": "pnpm@11.5.2",
   "engines": {
-    "node": ">=24"
+    "node": ">=22"
   },
   "scripts": {
     "test": "vitest",
     "test:run": "vitest run",
-    "build": "rimraf ./dist && tsup src/index.ts --format cjs,esm --dts --sourcemap",
+    "build": "tsdown",
     "format": "prettier . --check --experimental-cli",
     "format:fix": "prettier . --write --experimental-cli",
     "lint": "biome lint .",
@@ -50,13 +50,12 @@
     "@types/node": "^24.13.1",
     "@vitest/browser": "4.1.8",
     "@vitest/browser-playwright": "4.1.8",
-    "apache-arrow": "21.1.0",
+    "apache-arrow": "^17.0.0",
     "kysely": "^0.29.2",
     "playwright": "1.60.0",
     "prettier": "3.8.3",
     "prettier-plugin-organize-imports": "4.3.0",
-    "rimraf": "^6.1.3",
-    "tsup": "^8.5.1",
+    "tsdown": "^0.22.2",
     "typedoc": "^0.28.19",
     "typescript": "^6.0.3",
     "vitest": "^4.1.8"
